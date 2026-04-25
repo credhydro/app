@@ -1,0 +1,7 @@
+.claude/settings.json
+dashboard/.env
+dashboard/node_modules/
+dashboard/dist/
+.DS_Store
+*.db-shm
+*.db-wal
