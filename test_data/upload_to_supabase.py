@@ -54,20 +54,25 @@ DB_PATH = Path(__file__).parent / "argonaut.db"
 BATCH_SIZE = 200
 
 # Upload order matters: trials must precede tables that reference it.
-# Tables present in SQLite but not in Supabase (fan, dosing_events) are omitted.
 TABLES = [
     "trials",
     "ambient_raw",
-    # "ambient_derived",
-    # "circulation",
-    # "lights",
-    # "energy_costs",
-    # "ph_dosing_training",
-    # "calibrations",
+    "ambient_derived",
+    "circulation",
+    "fan",
+    "lights",
+    "energy_costs",
+    "ph_dosing_training",
+    "dosing_events",
+    "calibrations",
 ]
 
-# Columns that exist in the local SQLite schema but not in Supabase.
+# Columns that exist in SQLite but not in Supabase.
 SKIP_COLS = {"id", "synced_at"}
+
+# Default values injected when a column is required in Supabase but absent
+# in older SQLite exports (e.g. test data pre-dating schema v2).
+COL_DEFAULTS = {"device_id": "arg-02"}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -126,6 +131,9 @@ def _upload_table(con: sqlite3.Connection, table: str, valid_trials: set[str]) -
         row = {col: val for col, val in zip(cols, raw_row) if col not in SKIP_COLS}
         if has_trial_fk and row.get("trial_name") not in valid_trials:
             continue
+        if table != "trials":
+            for col, default in COL_DEFAULTS.items():
+                row.setdefault(col, default)
         row["uuid"] = str(uuid.uuid4())
         batch.append(row)
 

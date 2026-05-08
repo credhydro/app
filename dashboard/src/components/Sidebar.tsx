@@ -9,7 +9,7 @@ export function Sidebar({ active }: Props) {
     <aside className="w-56 min-h-screen bg-white border-r border-gray-100 flex flex-col shrink-0">
       <div className="px-5 py-6 border-b border-gray-100">
         <img
-          src="/images/Credible_Logo.png.avif"
+          src={`${import.meta.env.BASE_URL}images/Credible_Logo.png.avif`}
           alt="Credible logo"
           className="h-10 w-auto object-contain"
         />

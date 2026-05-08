@@ -10,6 +10,8 @@
 --     making sync retries idempotent.
 --   * `ingested_at` is set server-side so you can audit clock drift
 --     between the Pi (`datetime_utc`) and the cloud.
+--   * `device_id` is the Pi hostname (e.g. 'argonaut-pi-01'),
+--     set on the Pi and synced verbatim.
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid()
@@ -40,6 +42,7 @@ CREATE TABLE ambient_raw (
     id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid                 UUID        NOT NULL UNIQUE,
     trial_name           TEXT        NOT NULL REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE CASCADE,
+    device_id            TEXT        NOT NULL,
     datetime_utc         TIMESTAMPTZ NOT NULL,
     airtemp_c            DOUBLE PRECISION,
     humidity_pct         DOUBLE PRECISION,
@@ -60,6 +63,7 @@ CREATE TABLE ambient_raw (
     ingested_at          TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_ambient_raw_trial_time ON ambient_raw (trial_name, datetime_utc);
+CREATE INDEX idx_ambient_raw_device     ON ambient_raw (device_id, datetime_utc);
 
 -- ------------------------------------------------------------
 -- ambient_derived: Farquhar-Ball-Berry-Medlyn outputs
@@ -68,6 +72,7 @@ CREATE TABLE ambient_derived (
     id                      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid                    UUID        NOT NULL UNIQUE,
     trial_name              TEXT        NOT NULL REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE CASCADE,
+    device_id               TEXT        NOT NULL,
     datetime_utc            TIMESTAMPTZ NOT NULL,
     assimilation_umol_m2_s  DOUBLE PRECISION,
     hs                      DOUBLE PRECISION,
@@ -82,6 +87,7 @@ CREATE TABLE ambient_derived (
     ingested_at             TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_ambient_derived_trial_time ON ambient_derived (trial_name, datetime_utc);
+CREATE INDEX idx_ambient_derived_device     ON ambient_derived (device_id, datetime_utc);
 
 -- ------------------------------------------------------------
 -- circulation: pump event log (hourly)
@@ -90,6 +96,7 @@ CREATE TABLE circulation (
     id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid              UUID        NOT NULL UNIQUE,
     trial_name        TEXT        NOT NULL REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE CASCADE,
+    device_id         TEXT        NOT NULL,
     datetime_utc      TIMESTAMPTZ NOT NULL,
     pump_on_mins      DOUBLE PRECISION,
     avg_rate_lpm      DOUBLE PRECISION,
@@ -98,6 +105,7 @@ CREATE TABLE circulation (
     ingested_at       TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_circulation_trial_time ON circulation (trial_name, datetime_utc);
+CREATE INDEX idx_circulation_device     ON circulation (device_id, datetime_utc);
 
 -- ------------------------------------------------------------
 -- lights: lighting energy log (every 30 min)
@@ -106,12 +114,30 @@ CREATE TABLE lights (
     id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid          UUID        NOT NULL UNIQUE,
     trial_name    TEXT        NOT NULL REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE CASCADE,
+    device_id     TEXT        NOT NULL,
     datetime_utc  TIMESTAMPTZ NOT NULL,
     energy_wh     DOUBLE PRECISION,
     ammeter_v     DOUBLE PRECISION,
     ingested_at   TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_lights_trial_time ON lights (trial_name, datetime_utc);
+CREATE INDEX idx_lights_device     ON lights (device_id, datetime_utc);
+
+-- ------------------------------------------------------------
+-- fan: fan event log (per fan cycle)
+-- ------------------------------------------------------------
+CREATE TABLE fan (
+    id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    uuid          UUID        NOT NULL UNIQUE,
+    trial_name    TEXT        NOT NULL REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE CASCADE,
+    device_id     TEXT        NOT NULL,
+    datetime_utc  TIMESTAMPTZ NOT NULL,
+    on_mins       DOUBLE PRECISION,
+    energy_wh     DOUBLE PRECISION,
+    ingested_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_fan_trial_time ON fan (trial_name, datetime_utc);
+CREATE INDEX idx_fan_device     ON fan (device_id, datetime_utc);
 
 -- ------------------------------------------------------------
 -- energy_costs: hourly energy + CAISO grid data
@@ -120,9 +146,11 @@ CREATE TABLE energy_costs (
     id                             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid                           UUID        NOT NULL UNIQUE,
     trial_name                     TEXT        NOT NULL REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE CASCADE,
+    device_id                      TEXT        NOT NULL,
     datetime_utc                   TIMESTAMPTZ NOT NULL,
     pumping_wh                     DOUBLE PRECISION,
     lighting_wh                    DOUBLE PRECISION,
+    fan_wh                         DOUBLE PRECISION,
     total_wh                       DOUBLE PRECISION,
     rate                           DOUBLE PRECISION,
     energy_cost                    DOUBLE PRECISION,
@@ -133,6 +161,7 @@ CREATE TABLE energy_costs (
     ingested_at                    TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_energy_costs_trial_time ON energy_costs (trial_name, datetime_utc);
+CREATE INDEX idx_energy_costs_device     ON energy_costs (device_id, datetime_utc);
 
 -- ------------------------------------------------------------
 -- ph_dosing_training: ML training data for pH doser model
@@ -141,6 +170,7 @@ CREATE TABLE ph_dosing_training (
     id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid               UUID        NOT NULL UNIQUE,
     trial_name         TEXT        NOT NULL REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE CASCADE,
+    device_id          TEXT        NOT NULL,
     datetime_utc       TIMESTAMPTZ NOT NULL,
     start_ph           DOUBLE PRECISION,
     start_delta_ph     DOUBLE PRECISION,
@@ -152,6 +182,7 @@ CREATE TABLE ph_dosing_training (
     ingested_at        TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_ph_dosing_training_trial_time ON ph_dosing_training (trial_name, datetime_utc);
+CREATE INDEX idx_ph_dosing_training_device     ON ph_dosing_training (device_id, datetime_utc);
 
 -- ------------------------------------------------------------
 -- calibrations: probe calibration records (not strictly trial-scoped)
@@ -160,6 +191,7 @@ CREATE TABLE calibrations (
     id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid              UUID        NOT NULL UNIQUE,
     trial_name        TEXT        REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE SET NULL,
+    device_id         TEXT        NOT NULL,
     datetime_utc      TIMESTAMPTZ NOT NULL,
     device            TEXT        NOT NULL,
     probe_name        TEXT,
@@ -173,20 +205,59 @@ CREATE TABLE calibrations (
     ingested_at       TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_calibrations_probe_time ON calibrations (probe_name, datetime_utc);
+CREATE INDEX idx_calibrations_device     ON calibrations (device_id, datetime_utc);
 
 -- ------------------------------------------------------------
--- sync_log: optional but very useful — record every sync attempt
--- so you can debug intermittent connectivity from the cloud side.
+-- dosing_events: pH dosing event log (per dosing cycle)
+-- ------------------------------------------------------------
+CREATE TABLE dosing_events (
+    id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    uuid             UUID        NOT NULL UNIQUE,
+    trial_name       TEXT        NOT NULL REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE CASCADE,
+    device_id        TEXT        NOT NULL,
+    datetime_utc     TIMESTAMPTZ NOT NULL,
+    ph_before        DOUBLE PRECISION,
+    delta_before     DOUBLE PRECISION,
+    run_time_secs    DOUBLE PRECISION,
+    ph_after         DOUBLE PRECISION,
+    delta_after      DOUBLE PRECISION,
+    accuracy         DOUBLE PRECISION,
+    dose_ml          DOUBLE PRECISION,
+    ingested_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_dosing_events_trial_time ON dosing_events (trial_name, datetime_utc);
+CREATE INDEX idx_dosing_events_device     ON dosing_events (device_id, datetime_utc);
+
+-- ------------------------------------------------------------
+-- commands: dashboard → Pi control channel
+-- ------------------------------------------------------------
+CREATE TABLE commands (
+    id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    device_id     TEXT        NOT NULL,
+    trial_name    TEXT        REFERENCES trials(trial_name),
+    command       TEXT        NOT NULL,
+    params        JSONB,
+    created_at    TIMESTAMPTZ DEFAULT NOW(),
+    issued_by     TEXT,
+    picked_up_at  TIMESTAMPTZ,
+    executed_at   TIMESTAMPTZ,
+    result        TEXT
+);
+CREATE INDEX idx_commands_device_pending ON commands (device_id, created_at)
+    WHERE executed_at IS NULL;
+
+-- ------------------------------------------------------------
+-- sync_log: record every sync attempt for connectivity auditing
 -- ------------------------------------------------------------
 CREATE TABLE sync_log (
     id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    device_id       TEXT        NOT NULL,           -- e.g. hostname of the Pi
+    device_id       TEXT        NOT NULL,
     started_at      TIMESTAMPTZ NOT NULL,
     finished_at     TIMESTAMPTZ DEFAULT NOW(),
     table_name      TEXT        NOT NULL,
     rows_attempted  INTEGER,
     rows_inserted   INTEGER,
-    rows_skipped    INTEGER,                        -- already present (uuid conflict)
+    rows_skipped    INTEGER,
     success         BOOLEAN     NOT NULL,
     error_message   TEXT
 );
@@ -201,12 +272,14 @@ CREATE TABLE schema_version (
     notes       TEXT
 );
 INSERT INTO schema_version (version, notes) VALUES (1, 'Initial Argonaut schema, April 2026');
+INSERT INTO schema_version (version, notes) VALUES (2, 'Added device_id to all sensor tables, April 2026');
+INSERT INTO schema_version (version, notes) VALUES (3, 'Added fan, dosing_events tables; fan_wh to energy_costs, May 2026');
 
 -- ============================================================
 -- Example upsert pattern used by the Pi sync job:
 --
---   INSERT INTO ambient_raw (uuid, trial_name, datetime_utc, airtemp_c, ...)
---   VALUES ($1, $2, $3, $4, ...)
+--   INSERT INTO ambient_raw (uuid, trial_name, device_id, datetime_utc, airtemp_c, ...)
+--   VALUES ($1, $2, $3, $4, $5, ...)
 --   ON CONFLICT (uuid) DO NOTHING;
 --
 -- For tables that may be edited after initial insert (e.g. trials,
@@ -232,4 +305,5 @@ INSERT INTO schema_version (version, notes) VALUES (1, 'Initial Argonaut schema,
 -- ALTER TABLE energy_costs        ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE ph_dosing_training  ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE calibrations        ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE commands            ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE sync_log            ENABLE ROW LEVEL SECURITY;
