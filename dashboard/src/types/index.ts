@@ -8,6 +8,8 @@ export interface AmbientLatest {
 export interface AmbientData {
   latest: AmbientLatest | null
   dli: number | null
+  assimilation: number | null
+  totalCost: number | null
   loading: boolean
   error: string | null
 }

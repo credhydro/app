@@ -4,11 +4,16 @@ Upload all data from argonaut.db (SQLite) to Supabase.
 No pip dependencies — stdlib only (sqlite3, uuid, json, urllib).
 
 Usage:
-    python test_data/upload_to_supabase.py           # upload
-    python test_data/upload_to_supabase.py --clear   # delete all rows first, then upload
+    python upload_to_supabase.py           # upload
+    python upload_to_supabase.py --clear   # delete all rows first, then upload
 
-Reads credentials from dashboard/.env automatically.
-Override by setting SUPABASE_URL and SUPABASE_KEY env vars.
+Reads credentials from dashboard/.env (when run from the repo) or from
+environment variables (when run on the Pi).
+
+Environment variables:
+    SUPABASE_URL    Supabase project URL
+    SUPABASE_KEY    Service role key (bypasses RLS)
+    ARGONAUT_DB     Path to SQLite database (default: argonaut.db next to this script)
 """
 import json
 import os
@@ -50,7 +55,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-DB_PATH = Path(__file__).parent / "argonaut.db"
+DB_PATH = Path(os.environ.get("ARGONAUT_DB", Path(__file__).parent / "argonaut.db"))
 BATCH_SIZE = 200
 
 # Upload order matters: trials must precede tables that reference it.
@@ -106,21 +111,24 @@ def _post(table: str, rows: list[dict]) -> None:
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
             "Content-Type": "application/json",
-            "Prefer": "return=minimal",
+            "Prefer": "resolution=ignore-duplicates,return=minimal",
         },
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req) as resp:
-            if resp.status not in (200, 201):
-                raise RuntimeError(f"HTTP {resp.status}")
+        with urllib.request.urlopen(req):
+            pass
     except urllib.error.HTTPError as e:
         body = e.read().decode(errors="replace")
         raise RuntimeError(f"{table}: HTTP {e.code} — {body}") from e
 
 
 def _upload_table(con: sqlite3.Connection, table: str, valid_trials: set[str]) -> None:
-    cur = con.execute(f"SELECT * FROM {table}")  # noqa: S608 (local read-only db)
+    try:
+        cur = con.execute(f"SELECT * FROM {table}")  # noqa: S608 (local read-only db)
+    except sqlite3.OperationalError:
+        print(f"  {table}: not in SQLite, skipping")
+        return
     cols = [d[0].lower() for d in cur.description]  # normalise case (e.g. airtemp_C → airtemp_c)
     has_trial_fk = "trial_name" in cols and table != "trials"
 
@@ -134,7 +142,8 @@ def _upload_table(con: sqlite3.Connection, table: str, valid_trials: set[str]) -
         if table != "trials":
             for col, default in COL_DEFAULTS.items():
                 row.setdefault(col, default)
-        row["uuid"] = str(uuid.uuid4())
+        if not row.get("uuid"):
+            row["uuid"] = str(uuid.uuid4())
         batch.append(row)
 
         if len(batch) >= BATCH_SIZE:

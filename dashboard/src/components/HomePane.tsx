@@ -1,8 +1,9 @@
 import { useAmbientData } from '../hooks/useAmbientData'
 import { GaugeCard } from './GaugeCard'
+import { TimelineChart } from './TimelineChart'
 
 export function HomePane() {
-  const { latest, dli, loading, error } = useAmbientData()
+  const { latest, dli, assimilation, totalCost, loading, error } = useAmbientData()
 
   if (loading) {
     return (
@@ -28,7 +29,7 @@ export function HomePane() {
     : null
 
   return (
-    <div className="p-8 flex flex-col gap-8">
+    <div className="p-4 md:p-8 flex flex-col gap-6">
       <div className="flex items-baseline gap-4">
         <h1 className="text-xl font-semibold text-gray-700">Home</h1>
         {lastUpdated && (
@@ -36,7 +37,7 @@ export function HomePane() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-6 max-w-2xl">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <GaugeCard
           label="pH"
           value={latest?.ph ?? null}
@@ -77,7 +78,28 @@ export function HomePane() {
           goodMax={30}
           decimals={1}
         />
+        <GaugeCard
+          label="Growth Rate"
+          value={assimilation}
+          unit="μmol/m²/s"
+          min={-5}
+          max={30}
+          goodMin={10}
+          goodMax={25}
+          decimals={1}
+        />
+
+        {/* Running cost stat card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center p-5 gap-2">
+          <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Running Cost</span>
+          <span className="text-4xl font-bold text-gray-700">
+            {totalCost != null ? `$${totalCost.toFixed(2)}` : '—'}
+          </span>
+          <span className="text-sm text-gray-400">total</span>
+        </div>
       </div>
+
+      <TimelineChart />
     </div>
   )
 }

@@ -6,7 +6,7 @@ interface Props {
 
 export function Sidebar({ active }: Props) {
   return (
-    <aside className="w-56 min-h-screen bg-white border-r border-gray-100 flex flex-col shrink-0">
+    <aside className="hidden md:flex w-56 min-h-screen bg-white border-r border-gray-100 flex-col shrink-0">
       <div className="px-5 py-6 border-b border-gray-100">
         <img
           src={`${import.meta.env.BASE_URL}images/Credible_Logo.png.avif`}

@@ -55,7 +55,7 @@ export function GaugeCard({ label, value, unit, min, max, goodMin, goodMax, deci
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center p-5 gap-2">
       <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">{label}</span>
 
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
         {/* Background track */}
         <path
           d={arcPath(trackStart, trackEnd, R)}
