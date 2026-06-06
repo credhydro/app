@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import type { AmbientData } from '../types'
 
 const REFRESH_MS = 5 * 60 * 1000
 
 export function useAmbientData(): AmbientData {
+  const { selectedDevice } = useAuth()
   const [state, setState] = useState<AmbientData>({
     latest: null,
     dli: null,
@@ -15,11 +17,14 @@ export function useAmbientData(): AmbientData {
   })
 
   async function fetch() {
+    if (!selectedDevice) return
+
     try {
       const [latestRes, dliRes, assimRes, costRes] = await Promise.all([
         supabase
           .from('ambient_raw')
           .select('ph, ec_us, vpd_kpa, datetime_utc')
+          .eq('device_id', selectedDevice)
           .order('datetime_utc', { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -27,18 +32,21 @@ export function useAmbientData(): AmbientData {
         supabase
           .from('ambient_raw')
           .select('ppfd_umol_m2_s')
+          .eq('device_id', selectedDevice)
           .gte('datetime_utc', todayUtcStart()),
 
         supabase
           .from('ambient_derived')
           .select('assimilation_umol_m2_s')
+          .eq('device_id', selectedDevice)
           .order('datetime_utc', { ascending: false })
           .limit(1)
           .maybeSingle(),
 
         supabase
           .from('energy_costs')
-          .select('energy_cost'),
+          .select('energy_cost')
+          .eq('device_id', selectedDevice),
       ])
 
       if (latestRes.error) throw latestRes.error
@@ -72,10 +80,11 @@ export function useAmbientData(): AmbientData {
   }
 
   useEffect(() => {
+    setState(prev => ({ ...prev, loading: true }))
     fetch()
     const id = setInterval(fetch, REFRESH_MS)
     return () => clearInterval(id)
-  }, [])
+  }, [selectedDevice])
 
   return state
 }

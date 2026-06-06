@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
 export interface OnPeriod { start: Date; end: Date }
 
@@ -16,18 +17,21 @@ const REFRESH_MS = 5 * 60 * 1000
 const INTERVAL_MS = 30 * 60 * 1000  // default 30-min slot for lights
 
 export function useOperationsData(): OperationsData {
+  const { selectedDevice } = useAuth()
   const [state, setState] = useState<OperationsData>({
     lights: [], fan: [], pumps: [], dosing: [], loading: true, error: null,
   })
 
   async function fetch() {
+    if (!selectedDevice) return
+
     const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString()
     try {
       const [lightsRes, fanRes, pumpsRes, dosingRes] = await Promise.all([
-        supabase.from('lights').select('datetime_utc, energy_wh').gte('datetime_utc', since).order('datetime_utc'),
-        supabase.from('fan').select('datetime_utc, on_mins').gte('datetime_utc', since).order('datetime_utc'),
-        supabase.from('circulation').select('datetime_utc, pump_on_mins').gte('datetime_utc', since).order('datetime_utc'),
-        supabase.from('dosing_events').select('datetime_utc').gte('datetime_utc', since).order('datetime_utc'),
+        supabase.from('lights').select('datetime_utc, energy_wh').eq('device_id', selectedDevice).gte('datetime_utc', since).order('datetime_utc'),
+        supabase.from('fan').select('datetime_utc, on_mins').eq('device_id', selectedDevice).gte('datetime_utc', since).order('datetime_utc'),
+        supabase.from('circulation').select('datetime_utc, pump_on_mins').eq('device_id', selectedDevice).gte('datetime_utc', since).order('datetime_utc'),
+        supabase.from('dosing_events').select('datetime_utc').eq('device_id', selectedDevice).gte('datetime_utc', since).order('datetime_utc'),
       ])
 
       if (lightsRes.error) throw lightsRes.error
@@ -66,10 +70,11 @@ export function useOperationsData(): OperationsData {
   }
 
   useEffect(() => {
+    setState(prev => ({ ...prev, loading: true }))
     fetch()
     const id = setInterval(fetch, REFRESH_MS)
     return () => clearInterval(id)
-  }, [])
+  }, [selectedDevice])
 
   return state
 }
