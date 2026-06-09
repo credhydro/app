@@ -1,6 +1,8 @@
 import React from 'react'
 import { useAuth } from '../context/AuthContext'
 import { DevicePicker } from './DevicePicker'
+import { TrialPicker } from './TrialPicker'
+import { MonthPicker } from './MonthPicker'
 
 interface Props {
   active: string
@@ -25,6 +27,8 @@ export function Sidebar({ active }: Props) {
 
       <div className="mt-auto flex flex-col gap-2 p-3 border-t border-gray-100">
         {profile?.is_admin && <DevicePicker />}
+        <TrialPicker />
+        <MonthPicker />
         <button
           onClick={signOut}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium w-full text-left text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"

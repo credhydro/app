@@ -24,6 +24,7 @@ import sqlite3
 import sys
 import urllib.error
 import urllib.request
+import uuid as uuid_mod
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,6 +43,8 @@ DEFAULT_TABLES = [
     "energy_costs",
     "ph_dosing_training",
     "calibrations",
+    "fan",
+    "dosing_events",
 ]
 
 SKIP_COLS = {"id", "synced_at"}
@@ -126,7 +129,14 @@ def _sync_table(con: sqlite3.Connection, table: str) -> int:
     batch_ids: list[int] = []
     total = 0
 
+    uuid_idx = next((i for i, d in enumerate(cur.description) if d[0].lower() == "uuid"), None)
+
     for raw_row in cur:
+        if uuid_idx is not None and raw_row[uuid_idx] is None:
+            generated = str(uuid_mod.uuid4())
+            con.execute(f"UPDATE {table} SET uuid = ? WHERE id = ?", (generated, raw_row[id_idx]))
+            con.commit()
+            raw_row = tuple(generated if i == uuid_idx else v for i, v in enumerate(raw_row))
         row = {col: val for col, val in zip(col_names, raw_row) if col not in SKIP_COLS}
         batch.append(row)
         batch_ids.append(raw_row[id_idx])

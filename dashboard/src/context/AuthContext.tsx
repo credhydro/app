@@ -17,6 +17,10 @@ interface AuthContextValue {
   devices: Device[]           // all devices (populated for admins; single-item for regular users)
   selectedDevice: string | null
   setSelectedDevice: (id: string) => void
+  selectedTrial: string | null
+  setSelectedTrial: (name: string | null) => void
+  selectedMonth: string | null   // "YYYY-MM"
+  setSelectedMonth: (month: string | null) => void
   signOut: () => Promise<void>
   loading: boolean
 }
@@ -28,6 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [devices, setDevices] = useState<Device[]>([])
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
+  const [selectedTrial, setSelectedTrial] = useState<string | null>(null)
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   async function loadProfileAndDevices(userId: string) {
@@ -79,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, devices, selectedDevice, setSelectedDevice, signOut, loading }}>
+    <AuthContext.Provider value={{ session, profile, devices, selectedDevice, setSelectedDevice, selectedTrial, setSelectedTrial, selectedMonth, setSelectedMonth, signOut, loading }}>
       {children}
     </AuthContext.Provider>
   )
