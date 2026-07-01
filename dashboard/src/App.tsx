@@ -1,13 +1,14 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { LoginPage } from './pages/LoginPage'
 import { Sidebar } from './components/Sidebar'
 import { HomePane } from './components/HomePane'
+import { LightsPage } from './pages/LightsPage'
 
-function Dashboard() {
+function DashboardLayout() {
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar active="home" />
+      <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <header className="md:hidden bg-white border-b border-gray-100 px-4 py-3 flex items-center shrink-0">
           <img
@@ -17,7 +18,7 @@ function Dashboard() {
           />
         </header>
         <main className="flex-1">
-          <HomePane />
+          <Outlet />
         </main>
       </div>
     </div>
@@ -41,10 +42,13 @@ export default function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <DashboardLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<HomePane />} />
+            <Route path="lights" element={<LightsPage />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

@@ -21,6 +21,19 @@ export function useAmbientData(): AmbientData {
     if (!selectedDevice) return
 
     try {
+      // Step 1: get latest row to determine the active trial when none is manually selected
+      const latestRes = await supabase
+        .from('ambient_raw')
+        .select('ph, ec_us, vpd_kpa, datetime_utc, trial_name')
+        .eq('device_id', selectedDevice)
+        .order('datetime_utc', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (latestRes.error) throw latestRes.error
+
+      const activeTrial = selectedTrial ?? latestRes.data?.trial_name ?? null
+
       const applyFilters = (q: any) => {
         if (selectedTrial) q = q.eq('trial_name', selectedTrial)
         if (selectedMonth) {
@@ -32,15 +45,7 @@ export function useAmbientData(): AmbientData {
 
       const dliStart = selectedMonth ? monthRange(selectedMonth).gte : todayUtcStart()
 
-      const [latestRes, dliRes, assimRes, costRes] = await Promise.all([
-        applyFilters(supabase
-          .from('ambient_raw')
-          .select('ph, ec_us, vpd_kpa, datetime_utc')
-          .eq('device_id', selectedDevice))
-          .order('datetime_utc', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-
+      const [dliRes, assimRes, costRes] = await Promise.all([
         applyFilters(supabase
           .from('ambient_raw')
           .select('ppfd_umol_m2_s')
@@ -55,13 +60,18 @@ export function useAmbientData(): AmbientData {
           .limit(1)
           .maybeSingle(),
 
-        applyFilters(supabase
-          .from('energy_costs')
-          .select('energy_cost')
-          .eq('device_id', selectedDevice)),
+        activeTrial
+          ? applyFilters(supabase
+              .from('energy_costs')
+              .select('energy_cost')
+              .eq('device_id', selectedDevice)
+              .eq('trial_name', activeTrial))
+          : applyFilters(supabase
+              .from('energy_costs')
+              .select('energy_cost')
+              .eq('device_id', selectedDevice)),
       ])
 
-      if (latestRes.error) throw latestRes.error
       if (dliRes.error) throw dliRes.error
       if (assimRes.error) throw assimRes.error
       if (costRes.error) throw costRes.error
