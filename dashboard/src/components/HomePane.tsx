@@ -53,9 +53,9 @@ export function HomePane() {
           value={latest?.ec_us != null ? latest.ec_us / 1000 : null}
           unit="mS/cm"
           min={0}
-          max={4}
+          max={3}
           goodMin={1.0}
-          goodMax={2.5}
+          goodMax={1.5}
           decimals={2}
         />
         <GaugeCard
@@ -63,9 +63,9 @@ export function HomePane() {
           value={latest?.vpd_kpa ?? null}
           unit="kPa"
           min={0}
-          max={3}
-          goodMin={0.8}
-          goodMax={1.2}
+          max={2.5}
+          goodMin={0.6}
+          goodMax={1.0}
           decimals={2}
         />
         <GaugeCard
@@ -73,19 +73,19 @@ export function HomePane() {
           value={dli}
           unit="mol/m²/day"
           min={0}
-          max={50}
+          max={20}
           goodMin={10}
-          goodMax={30}
+          goodMax={15}
           decimals={1}
         />
         <GaugeCard
           label="Growth Rate"
           value={assimilation}
           unit="μmol/m²/s"
-          min={-5}
-          max={30}
-          goodMin={10}
-          goodMax={25}
+          min={0}
+          max={25}
+          goodMin={8}
+          goodMax={14}
           decimals={1}
         />
 

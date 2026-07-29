@@ -69,7 +69,7 @@ export function GaugeCard({ label, value, unit, min, max, goodMin, goodMax, deci
           <path
             d={arcPath(trackStart, aGoodMin, R)}
             fill="none"
-            stroke="#fbbf24"
+            stroke="#f87171"
             strokeWidth={14}
             strokeLinecap="butt"
           />
