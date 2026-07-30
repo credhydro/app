@@ -1,9 +1,6 @@
-import { useAuth } from '../context/AuthContext'
 import { useOperationsData } from '../hooks/useOperationsData'
 import type { OnPeriod } from '../hooks/useOperationsData'
-import { monthRange, formatMonth } from '../hooks/useMonths'
 
-// SVG coordinate constants
 const VB_W    = 800
 const LABEL_W = 58
 const PAD_R   = 8
@@ -27,25 +24,12 @@ const AXIS_Y = PAD_T + ROWS.length * (ROW_H + ROW_GAP)
 
 export function TimelineChart() {
   const { lights, fan, pumps, dosing, loading, error } = useOperationsData()
-  const { selectedMonth } = useAuth()
 
-  // When a month is selected, plot across that whole month.
-  // Otherwise, fall back to the original "last 48 hours" live view.
-  const now = new Date()
-  let start: Date
-  let end: Date
-  if (selectedMonth) {
-    const { gte, lt } = monthRange(selectedMonth)
-    start = new Date(gte)
-    end = new Date(lt)
-  } else {
-    start = new Date(now.getTime() - 48 * 3600 * 1000)
-    end = now
-  }
-  const rangeMs = end.getTime() - start.getTime()
+  const now   = new Date()
+  const start = new Date(now.getTime() - 48 * 3600 * 1000)
 
   function tX(t: Date): number {
-    const frac = (t.getTime() - start.getTime()) / rangeMs
+    const frac = (t.getTime() - start.getTime()) / (now.getTime() - start.getTime())
     return LABEL_W + Math.max(0, Math.min(1, frac)) * CHART_W
   }
 
@@ -56,31 +40,20 @@ export function TimelineChart() {
     return <rect key={key} x={x1} y={y} width={w} height={ROW_H} fill={color} rx={3} opacity={0.85} />
   }
 
-  // Axis ticks: hourly when showing the live 48h view,
-  // evenly spaced calendar days when showing a full selected month.
-  const ticks = selectedMonth
-    ? Array.from({ length: 6 }, (_, i) => {
-        const t = new Date(start.getTime() + (rangeMs * i) / 5)
-        return {
-          x: tX(t),
-          label: t.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }),
-        }
-      })
-    : [-48, -36, -24, -12, 0].map(h => {
-        const t = new Date(now.getTime() + h * 3600 * 1000)
-        const label = h === 0
-          ? 'Now'
-          : t.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', hour12: true })
-        return { x: tX(t), label }
-      })
+  const ticks = [-48, -36, -24, -12, 0].map(h => {
+    const t = new Date(now.getTime() + h * 3600 * 1000)
+    const label = h === 0
+      ? 'Now'
+      : t.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', hour12: true })
+    return { x: tX(t), label }
+  })
 
   const data = { lights, fan, pumps, dosing }
-  const heading = selectedMonth ? `Operations — ${formatMonth(selectedMonth)}` : 'Operations — last 48 h'
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 flex flex-col gap-3">
       <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">
-        {heading}
+        Operations — last 48 h
       </h2>
 
       {loading && (
@@ -95,18 +68,14 @@ export function TimelineChart() {
           viewBox={`0 0 ${VB_W} ${VB_H}`}
           className="overflow-visible"
         >
-          {/* Row tracks and labels */}
           {ROWS.map((row, i) => {
             const y = rowY(i)
             return (
               <g key={row.key}>
-                {/* Track background */}
                 <rect x={LABEL_W} y={y} width={CHART_W} height={ROW_H} fill="#f9fafb" rx={3} />
-                {/* Label */}
                 <text x={LABEL_W - 6} y={y + ROW_H / 2 + 4} textAnchor="end" fontSize={11} fill="#9ca3af">
                   {row.label}
                 </text>
-                {/* On-periods */}
                 {row.key === 'dosing'
                   ? (data.dosing as Date[]).map((t, j) => (
                       <rect
@@ -127,7 +96,6 @@ export function TimelineChart() {
             )
           })}
 
-          {/* Time axis */}
           <line x1={LABEL_W} y1={AXIS_Y} x2={LABEL_W + CHART_W} y2={AXIS_Y} stroke="#e5e7eb" strokeWidth={1} />
           {ticks.map(({ x, label }) => (
             <g key={label}>
