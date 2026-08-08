@@ -2,7 +2,7 @@
 
 Frontend dashboard and data pipeline for the CredHydro hydroponic monitoring platform. The dashboard displays real-time sensor readings and equipment operations pulled from a Supabase backend.
 
-**GitHub:** https://github.com/MoneyBusiness-LLC/CredHydro
+**GitHub:** https://github.com/credhydro/app
 
 ---
 
