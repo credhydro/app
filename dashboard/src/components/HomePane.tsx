@@ -74,8 +74,8 @@ export function HomePane() {
           unit="mol/m²/day"
           min={0}
           max={20}
-          goodMin={10}
-          goodMax={15}
+          goodMin={12}
+          goodMax={17}
           decimals={1}
         />
         <GaugeCard

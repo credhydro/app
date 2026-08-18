@@ -48,7 +48,7 @@ Six at-a-glance metric cards pulled from the `ambient_raw`, `ambient_derived`, a
 | **pH** | `ambient_raw.ph` | 5.5 – 6.5 pH |
 | **EC** | `ambient_raw.ec_us` (converted µS → mS/cm) | 1.0 – 2.5 mS/cm |
 | **VPD** | `ambient_raw.vpd_kpa` | 0.8 – 1.2 kPa |
-| **DLI** | `lights.dli_mol_m2_day` (latest row) | 10 – 30 mol/m²/day |
+| **DLI** | `lights.dli_mol_m2_day` (latest row) | 12 – 17 mol/m²/day |
 | **Growth Rate** | `ambient_derived.assimilation_umol_m2_s` (latest row) | 10 – 25 µmol/m²/s |
 | **Running Cost** | Sum of all `energy_costs.energy_cost` rows | — |
 
