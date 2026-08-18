@@ -43,14 +43,14 @@ export function useAmbientData(): AmbientData {
         return q
       }
 
-      const dliStart = selectedMonth ? monthRange(selectedMonth).gte : todayUtcStart()
-
       const [dliRes, assimRes, costRes] = await Promise.all([
         applyFilters(supabase
-          .from('ambient_raw')
-          .select('ppfd_umol_m2_s')
+          .from('lights')
+          .select('dli_mol_m2_day')
           .eq('device_id', selectedDevice))
-          .gte('datetime_utc', dliStart),
+          .order('datetime_utc', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
 
         applyFilters(supabase
           .from('ambient_derived')
@@ -76,12 +76,7 @@ export function useAmbientData(): AmbientData {
       if (assimRes.error) throw assimRes.error
       if (costRes.error) throw costRes.error
 
-      const rows: { ppfd_umol_m2_s: number | null }[] = dliRes.data ?? []
-      const dli =
-        rows.length > 0
-          ? rows.reduce((sum: number, r) => sum + (r.ppfd_umol_m2_s ?? 0) * 1800, 0) /
-            1_000_000
-          : null
+      const dli = dliRes.data?.dli_mol_m2_day ?? null
 
       const assimilation = assimRes.data?.assimilation_umol_m2_s ?? null
 
@@ -109,11 +104,4 @@ export function useAmbientData(): AmbientData {
   }, [selectedDevice, selectedTrial, selectedMonth])
 
   return state
-}
-
-function todayUtcStart(): string {
-  const d = new Date()
-  return new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-  ).toISOString()
 }

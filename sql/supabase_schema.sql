@@ -118,6 +118,7 @@ CREATE TABLE lights (
     datetime_utc  TIMESTAMPTZ NOT NULL,
     energy_wh     DOUBLE PRECISION,
     ammeter_v     DOUBLE PRECISION,
+    dli_mol_m2_day DOUBLE PRECISION,
     ingested_at   TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_lights_trial_time ON lights (trial_name, datetime_utc);
