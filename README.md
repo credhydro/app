@@ -63,7 +63,7 @@ An SVG timeline chart showing equipment activity over the **last 48 hours**, wit
 | **Lights** | `lights` | `energy_wh` (non-zero = on period) |
 | **Fan** | `fan` | `on_mins` |
 | **Pump** | `circulation` | `pump_on_mins` |
-| **Dosing** | `dosing_events` | event timestamp (rendered as vertical tick marks) |
+| **Dosing** | `dosing_events` | event timestamp (rendered as vertical tick marks), color-coded by `direction` (`down` = red, `up` = violet) |
 
 ### Data refresh
 

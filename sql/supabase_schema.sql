@@ -217,6 +217,7 @@ CREATE TABLE dosing_events (
     trial_name       TEXT        NOT NULL REFERENCES trials(trial_name) ON UPDATE CASCADE ON DELETE CASCADE,
     device_id        TEXT        NOT NULL,
     datetime_utc     TIMESTAMPTZ NOT NULL,
+    direction        TEXT        CHECK (direction IN ('up', 'down')),
     ph_before        DOUBLE PRECISION,
     delta_before     DOUBLE PRECISION,
     run_time_secs    DOUBLE PRECISION,

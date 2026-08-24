@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext'
 import { monthRange } from './useMonths'
 
 export interface OnPeriod { start: Date; end: Date }
+export interface DosingEvent { time: Date; direction: 'up' | 'down' }
 export interface OperationsData {
   lights: OnPeriod[]
   fan: OnPeriod[]
   pumps: OnPeriod[]
-  dosing: Date[]
+  dosing: DosingEvent[]
   loading: boolean
   error: string | null
 }
@@ -71,8 +72,8 @@ export function useOperationsData(): OperationsData {
         fetchAllRows<{ datetime_utc: string; pump_on_mins: number | null }>(
           applyFilters('circulation', 'datetime_utc, pump_on_mins')
         ),
-        fetchAllRows<{ datetime_utc: string }>(
-          applyFilters('dosing_events', 'datetime_utc')
+        fetchAllRows<{ datetime_utc: string; direction: 'up' | 'down' | null }>(
+          applyFilters('dosing_events', 'datetime_utc, direction')
         ),
       ])
 
@@ -94,7 +95,10 @@ export function useOperationsData(): OperationsData {
           const start = new Date(r.datetime_utc)
           return { start, end: new Date(start.getTime() + (r.pump_on_mins ?? 30) * 60 * 1000) }
         })
-      const dosing: Date[] = dosingData.map(r => new Date(r.datetime_utc))
+      const dosing: DosingEvent[] = dosingData.map(r => ({
+        time: new Date(r.datetime_utc),
+        direction: r.direction ?? 'down',
+      }))
 
       setState({ lights, fan, pumps, dosing, loading: false, error: null })
     } catch (e) {

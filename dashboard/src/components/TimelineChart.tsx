@@ -1,5 +1,5 @@
 import { useOperationsData } from '../hooks/useOperationsData'
-import type { OnPeriod } from '../hooks/useOperationsData'
+import type { OnPeriod, DosingEvent } from '../hooks/useOperationsData'
 
 const VB_W    = 800
 const LABEL_W = 58
@@ -16,6 +16,11 @@ const ROWS = [
   { key: 'pumps'  as const, label: 'Pump',   color: '#34d399' },
   { key: 'dosing' as const, label: 'Dosing', color: '#f87171' },
 ]
+
+const DOSING_COLORS: Record<DosingEvent['direction'], string> = {
+  down: '#f87171',
+  up:   '#a78bfa',
+}
 
 const VB_H = PAD_T + ROWS.length * (ROW_H + ROW_GAP) - ROW_GAP + AXIS_H + 4
 
@@ -77,14 +82,14 @@ export function TimelineChart() {
                   {row.label}
                 </text>
                 {row.key === 'dosing'
-                  ? (data.dosing as Date[]).map((t, j) => (
+                  ? (data.dosing as DosingEvent[]).map((e, j) => (
                       <rect
                         key={j}
-                        x={tX(t) - 2}
+                        x={tX(e.time) - 2}
                         y={y}
                         width={4}
                         height={ROW_H}
-                        fill={row.color}
+                        fill={DOSING_COLORS[e.direction]}
                         rx={2}
                         opacity={0.9}
                       />
@@ -104,6 +109,19 @@ export function TimelineChart() {
             </g>
           ))}
         </svg>
+      )}
+
+      {!loading && !error && (
+        <div className="flex items-center gap-4 pl-[58px]">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: DOSING_COLORS.down }} />
+            <span className="text-xs text-gray-400">pH Down</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: DOSING_COLORS.up }} />
+            <span className="text-xs text-gray-400">pH Up</span>
+          </div>
+        </div>
       )}
     </div>
   )
