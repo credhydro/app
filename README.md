@@ -45,7 +45,7 @@ Six at-a-glance metric cards pulled from the `ambient_raw`, `ambient_derived`, a
 
 | Metric | Source | Good range |
 |---|---|---|
-| **pH** | `ambient_raw.ph` | 5.5 – 6.5 pH |
+| **pH** | `ambient_raw.ph` | Set on the pH Dosing tab (defaults to 5.5 – 6.5 pH) |
 | **EC** | `ambient_raw.ec_us` (converted µS → mS/cm) | 1.0 – 2.5 mS/cm |
 | **VPD** | `ambient_raw.vpd_kpa` | 0.8 – 1.2 kPa |
 | **DLI** | `lights.dli_mol_m2_day` (latest row) | 12 – 17 mol/m²/day |
@@ -64,6 +64,10 @@ An SVG timeline chart showing equipment activity over the **last 48 hours**, wit
 | **Fan** | `fan` | `on_mins` |
 | **Pump** | `circulation` | `pump_on_mins` |
 | **Dosing** | `dosing_events` | event timestamp (rendered as vertical tick marks), color-coded by `direction` (`down` = red, `up` = violet) |
+
+#### pH Dosing
+
+A dual-handle slider (4 – 8 pH, snapping to 0.2 increments) sets the desired pH range. Pressing **Set** inserts a `set_ph_target` row into the `commands` queue table (`{"target_ph": <lower bound>, "ph_max_delta": <span>}`), same as the Lights tab's manual/schedule controls. The Home page pH gauge reads the most recently sent `set_ph_target` command to color its green/red good-range spans, so setting a new target here updates the Home gauge on next load.
 
 ### Data refresh
 

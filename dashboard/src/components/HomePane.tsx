@@ -1,9 +1,16 @@
 import { useAmbientData } from '../hooks/useAmbientData'
+import { usePhTargetStatus } from '../hooks/usePhTargetStatus'
 import { GaugeCard } from './GaugeCard'
 import { TimelineChart } from './TimelineChart'
 
 export function HomePane() {
   const { latest, dli, assimilation, totalCost, loading, error } = useAmbientData()
+  const { targetPh, phMaxDelta } = usePhTargetStatus()
+
+  const phGoodMin = targetPh ?? 5.5
+  const phGoodMax = targetPh != null && phMaxDelta != null
+    ? Math.round((targetPh + phMaxDelta) * 10) / 10
+    : 6.5
 
   if (loading) {
     return (
@@ -44,8 +51,8 @@ export function HomePane() {
           unit="pH"
           min={0}
           max={14}
-          goodMin={5.5}
-          goodMax={6.5}
+          goodMin={phGoodMin}
+          goodMax={phGoodMax}
           decimals={2}
         />
         <GaugeCard

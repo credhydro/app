@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar'
 import { MobileTabBar } from './components/MobileTabBar'
 import { HomePane } from './components/HomePane'
 import { LightsPage } from './pages/LightsPage'
+import { PhDosingPage } from './pages/PhDosingPage'
 
 function DashboardLayout() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
           >
             <Route index element={<HomePane />} />
             <Route path="lights" element={<LightsPage />} />
+            <Route path="ph-dosing" element={<PhDosingPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
