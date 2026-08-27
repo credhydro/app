@@ -3,15 +3,17 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
 export interface PhTargetStatus {
+  /** Midpoint of the target pH range. */
   targetPh: number | null
+  /** Half the width of the target pH range (range = targetPh +/- phMaxDelta). */
   phMaxDelta: number | null
   pendingCommand: string | null
   loading: boolean
   error: string | null
 }
 
-const DEFAULT_TARGET_PH = 5.5
-const DEFAULT_PH_MAX_DELTA = 1.0
+const DEFAULT_TARGET_PH = 6.0
+const DEFAULT_PH_MAX_DELTA = 0.5
 const REFRESH_MS = 30 * 1000
 
 export function usePhTargetStatus(): PhTargetStatus {

@@ -67,7 +67,7 @@ An SVG timeline chart showing equipment activity over the **last 48 hours**, wit
 
 #### pH Dosing
 
-A dual-handle slider (4 – 8 pH, snapping to 0.2 increments) sets the desired pH range. Pressing **Set** inserts a `set_ph_target` row into the `commands` queue table (`{"target_ph": <lower bound>, "ph_max_delta": <span>}`), same as the Lights tab's manual/schedule controls. The Home page pH gauge reads the most recently sent `set_ph_target` command to color its green/red good-range spans, so setting a new target here updates the Home gauge on next load.
+A dual-handle slider (4 – 8 pH, snapping to 0.2 increments) sets the desired pH range. Pressing **Set** inserts a `set_ph_target` row into the `commands` queue table (`{"target_ph": <midpoint>, "ph_max_delta": <half-width>}`), same as the Lights tab's manual/schedule controls. The Home page pH gauge reads the most recently sent `set_ph_target` command to color its green/red good-range spans (range = `target_ph ± ph_max_delta`), so setting a new target here updates the Home gauge on next load.
 
 ### Data refresh
 

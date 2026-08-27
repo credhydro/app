@@ -7,7 +7,9 @@ export function HomePane() {
   const { latest, dli, assimilation, totalCost, loading, error } = useAmbientData()
   const { targetPh, phMaxDelta } = usePhTargetStatus()
 
-  const phGoodMin = targetPh ?? 5.5
+  const phGoodMin = targetPh != null && phMaxDelta != null
+    ? Math.round((targetPh - phMaxDelta) * 10) / 10
+    : 5.5
   const phGoodMax = targetPh != null && phMaxDelta != null
     ? Math.round((targetPh + phMaxDelta) * 10) / 10
     : 6.5

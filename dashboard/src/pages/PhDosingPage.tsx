@@ -23,7 +23,7 @@ export function PhDosingPage() {
 
   useEffect(() => {
     if (targetPh != null && phMaxDelta != null) {
-      setDraftLow(targetPh)
+      setDraftLow(round1(targetPh - phMaxDelta))
       setDraftHigh(round1(targetPh + phMaxDelta))
     }
   }, [targetPh, phMaxDelta])
@@ -31,7 +31,7 @@ export function PhDosingPage() {
   const changed =
     targetPh == null || phMaxDelta == null
       ? false
-      : draftLow !== targetPh || draftHigh !== round1(targetPh + phMaxDelta)
+      : draftLow !== round1(targetPh - phMaxDelta) || draftHigh !== round1(targetPh + phMaxDelta)
 
   async function handleSave() {
     if (!selectedDevice || sending) return
@@ -39,7 +39,10 @@ export function PhDosingPage() {
     const { error } = await sendCommand(
       selectedDevice,
       'set_ph_target',
-      { target_ph: draftLow, ph_max_delta: round1(draftHigh - draftLow) },
+      {
+        target_ph: round1((draftLow + draftHigh) / 2),
+        ph_max_delta: round1((draftHigh - draftLow) / 2),
+      },
       selectedTrial,
     )
     setSending(false)
