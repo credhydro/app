@@ -66,7 +66,7 @@ function NavItem({
   )
 }
 
-function HomeIcon(): React.ReactElement {
+export function HomeIcon(): React.ReactElement {
   return (
     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
       <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7A1 1 0 003 11h1v6a1 1 0 001 1h4v-4h2v4h4a1 1 0 001-1v-6h1a1 1 0 00.707-1.707l-7-7z" />
@@ -74,7 +74,7 @@ function HomeIcon(): React.ReactElement {
   )
 }
 
-function LightsIcon(): React.ReactElement {
+export function LightsIcon(): React.ReactElement {
   return (
     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
       <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM6.343 5.657a1 1 0 00-1.414-1.414L3.515 5.657a1 1 0 001.414 1.414l1.414-1.414zM15.071 4.243a1 1 0 00-1.414 1.414l1.414 1.414a1 1 0 001.414-1.414l-1.414-1.414zM10 7a3 3 0 100 6 3 3 0 000-6zM3 11a1 1 0 000 2h1a1 1 0 100-2H3zM16 11a1 1 0 100 2h1a1 1 0 100-2h-1zM5.657 14.343a1 1 0 00-1.414 1.414l1.414 1.414a1 1 0 001.414-1.414l-1.414-1.414zM14.343 15.757a1 1 0 001.414-1.414l-1.414-1.414a1 1 0 00-1.414 1.414l1.414 1.414zM11 16a1 1 0 10-2 0v1a1 1 0 102 0v-1z" />

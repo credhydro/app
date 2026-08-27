@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { LoginPage } from './pages/LoginPage'
 import { Sidebar } from './components/Sidebar'
+import { MobileTabBar } from './components/MobileTabBar'
 import { HomePane } from './components/HomePane'
 import { LightsPage } from './pages/LightsPage'
 
@@ -17,10 +18,11 @@ function DashboardLayout() {
             className="h-8 w-auto object-contain"
           />
         </header>
-        <main className="flex-1">
+        <main className="flex-1 pb-16 md:pb-0">
           <Outlet />
         </main>
       </div>
+      <MobileTabBar />
     </div>
   )
 }
