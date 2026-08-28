@@ -88,7 +88,7 @@ export function HomePane() {
           decimals={1}
         />
         <GaugeCard
-          label="Growth Rate"
+          label="Photosynthetic Rate"
           value={assimilation}
           unit="μmol/m²/s"
           min={0}
