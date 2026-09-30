@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { usePhTargetStatus } from '../hooks/usePhTargetStatus'
+import { useDoserAutoStatus } from '../hooks/useDoserAutoStatus'
 import { RangeSlider } from '../components/RangeSlider'
 import { sendCommand } from '../lib/commands'
 
@@ -15,11 +16,18 @@ function round1(v: number): number {
 export function PhDosingPage() {
   const { selectedDevice, selectedTrial } = useAuth()
   const { targetPh, phMaxDelta, pendingCommand, loading, error } = usePhTargetStatus()
+  const {
+    downEnabled,
+    upEnabled,
+    pendingDirection,
+    error: doserAutoError,
+  } = useDoserAutoStatus()
 
   const [draftLow, setDraftLow] = useState(5.5)
   const [draftHigh, setDraftHigh] = useState(6.5)
   const [sending, setSending] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [togglingDirection, setTogglingDirection] = useState<'down' | 'up' | null>(null)
 
   useEffect(() => {
     if (targetPh != null && phMaxDelta != null) {
@@ -52,6 +60,13 @@ export function PhDosingPage() {
     }
   }
 
+  async function handleToggleAuto(direction: 'down' | 'up', enabled: boolean) {
+    if (!selectedDevice || togglingDirection) return
+    setTogglingDirection(direction)
+    await sendCommand(selectedDevice, 'set_doser_auto', { direction, enabled }, selectedTrial)
+    setTogglingDirection(null)
+  }
+
   return (
     <div className="p-4 md:p-8 flex flex-col gap-6 max-w-2xl">
       <h1 className="text-xl font-semibold text-gray-700">pH Dosing</h1>
@@ -65,7 +80,20 @@ export function PhDosingPage() {
         </div>
       )}
 
+      {pendingDirection && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 flex items-center gap-2">
+          <ClockIcon />
+          <span>
+            <span className="font-medium">
+              {pendingDirection === 'down' ? 'Enable pH Down Auto Doser' : 'Enable pH Up Auto Doser'}
+            </span>{' '}
+            — waiting for Pi to pick up
+          </span>
+        </div>
+      )}
+
       {error && <div className="text-sm text-red-500">{error}</div>}
+      {doserAutoError && <div className="text-sm text-red-500">{doserAutoError}</div>}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
@@ -97,6 +125,38 @@ export function PhDosingPage() {
         >
           {sending ? 'Sending…' : saveSuccess ? 'Set ✓' : 'Set'}
         </button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+          Automatic Dosing
+        </h2>
+
+        <label className="flex items-center gap-3 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={downEnabled}
+            disabled={togglingDirection === 'down'}
+            onChange={e => handleToggleAuto('down', e.target.checked)}
+            className="w-4 h-4 rounded accent-emerald-500 disabled:opacity-50"
+          />
+          Enable pH Down Auto Doser
+        </label>
+
+        <label className="flex items-center gap-3 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={upEnabled}
+            disabled={togglingDirection === 'up'}
+            onChange={e => handleToggleAuto('up', e.target.checked)}
+            className="w-4 h-4 rounded accent-emerald-500 disabled:opacity-50"
+          />
+          Enable pH Up Auto Doser
+        </label>
+
+        <p className="text-xs text-gray-400">
+          Each doser runs independently and can be enabled at the same time.
+        </p>
       </div>
     </div>
   )
