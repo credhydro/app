@@ -6,6 +6,7 @@ import { MobileTabBar } from './components/MobileTabBar'
 import { HomePane } from './components/HomePane'
 import { LightsPage } from './pages/LightsPage'
 import { PhDosingPage } from './pages/PhDosingPage'
+import { GrowthPhotosPage } from './pages/GrowthPhotosPage'
 
 function DashboardLayout() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
             <Route index element={<HomePane />} />
             <Route path="lights" element={<LightsPage />} />
             <Route path="ph-dosing" element={<PhDosingPage />} />
+            <Route path="growth-photos" element={<GrowthPhotosPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

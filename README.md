@@ -71,6 +71,17 @@ A dual-handle slider (4 – 8 pH, snapping to 0.2 increments) sets the desired p
 
 Two independent checkboxes — "Enable pH Down Auto Doser" and "Enable pH Up Auto Doser" — each send a `set_doser_auto` command immediately on toggle (`{"direction": "down" | "up", "enabled": true | false}`). Both can be on at once since the two dosers run independently.
 
+#### Growth Photos
+
+Growers photograph a tagged plant block and get Argonaut's canopy-area analysis back within about a minute. The original JPEG is uploaded as-is (no client-side resizing/re-encoding, since the Pi's analysis depends on full resolution and EXIF data) to the private `growth-photos` Storage bucket at `<device_id>/originals/<uuid>.jpg`, and a row is inserted into `photo_uploads` with `status: 'queued'`. A Raspberry Pi worker (cron, every minute) claims the row, analyses the photo, uploads an annotated overlay image, and writes back `status`/`qc_status`/`message`/`result`/`overlay_path` — all of which are Pi-only-written columns the dashboard never sets.
+
+The dashboard polls the row by id every 3 seconds while it's `queued`/`processing`, and shows:
+- **Accepted** (`done` + `qc_status: 'ok'`): the Pi's `message`, the overlay image (via a 1-hour signed URL, since the bucket is private), a per-plant table (canopy area, % change, growth rate — "First photo" where there's no earlier accepted photo to compare against), and a mean-area/spread summary. No color-coded good/bad judgment — there's no reference growth curve yet.
+- **Rejected** (`done` + `qc_status: 'rejected'`): the Pi's plain-language retake reason and a "Retake photo" button.
+- **Error**: a neutral message and a "Try again" button (the technical `error` column is admin-only and is never fetched by this feature).
+
+The last 20 uploads for the current device are listed below with status badges; clicking any of them re-opens its result view. If a user has no device assigned, an empty-state card is shown instead.
+
 ### Data refresh
 
 Both hooks (`useAmbientData`, `useOperationsData`) poll Supabase every **5 minutes** via `setInterval`.

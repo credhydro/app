@@ -23,6 +23,7 @@ export function Sidebar() {
         <NavItem label="Home" icon={HomeIcon} to="/" active={location.pathname === '/'} />
         <NavItem label="Lights" icon={LightsIcon} to="/lights" active={location.pathname === '/lights'} />
         <NavItem label="pH Dosing" icon={DropletIcon} to="/ph-dosing" active={location.pathname === '/ph-dosing'} />
+        <NavItem label="Growth Photos" icon={PhotoIcon} to="/growth-photos" active={location.pathname === '/growth-photos'} />
       </nav>
 
       <div className="mt-auto flex flex-col gap-2 p-3 border-t border-gray-100">
@@ -87,6 +88,14 @@ export function DropletIcon(): React.ReactElement {
   return (
     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M10 2.5c.28 0 .543.128.717.348 1.61 2.03 5.783 7.63 5.783 10.652a6.5 6.5 0 11-13 0c0-3.022 4.173-8.622 5.783-10.652A.917.917 0 0110 2.5zm-3.5 11a.75.75 0 011.5 0 2 2 0 002 2 .75.75 0 010 1.5 3.5 3.5 0 01-3.5-3.5z" clipRule="evenodd" />
+    </svg>
+  )
+}
+
+export function PhotoIcon(): React.ReactElement {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M7 3a1 1 0 00-.8.4L5.25 5H4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.25l-.95-1.6A1 1 0 0013 3H7zm3 5a4 4 0 110 8 4 4 0 010-8zm0 2a2 2 0 100 4 2 2 0 000-4z" clipRule="evenodd" />
     </svg>
   )
 }

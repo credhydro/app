@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { HomeIcon, LightsIcon, DropletIcon } from './Sidebar'
+import { HomeIcon, LightsIcon, DropletIcon, PhotoIcon } from './Sidebar'
 
 export function MobileTabBar() {
   const location = useLocation()
@@ -10,6 +10,7 @@ export function MobileTabBar() {
       <TabItem label="Home" icon={HomeIcon} to="/" active={location.pathname === '/'} />
       <TabItem label="Lights" icon={LightsIcon} to="/lights" active={location.pathname === '/lights'} />
       <TabItem label="pH Dosing" icon={DropletIcon} to="/ph-dosing" active={location.pathname === '/ph-dosing'} />
+      <TabItem label="Photos" icon={PhotoIcon} to="/growth-photos" active={location.pathname === '/growth-photos'} />
     </nav>
   )
 }
