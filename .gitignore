@@ -5,3 +5,12 @@ dashboard/dist/
 .DS_Store
 *.db-shm
 *.db-wal
+
+# Backend / device material lives in the private argonaut repo -- never commit here
+design docs/
+sql/
+scripts/
+test_data/
+*.db
+*.sqlite
+*.pdf

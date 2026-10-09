@@ -1,161 +1,39 @@
-# CredHydro
+# CredHydro Dashboard
 
-Frontend dashboard and data pipeline for the CredHydro hydroponic monitoring platform. The dashboard displays real-time sensor readings and equipment operations pulled from a Supabase backend.
+Web dashboard for the CredHydro hydroponic monitoring platform. Built with
+React 18, TypeScript, Vite and Tailwind CSS; reads data through the Supabase
+JS client. Deployed to GitHub Pages on every push to `main`
+(`.github/workflows/deploy.yml`).
 
-**GitHub:** https://github.com/credhydro/app
+## Pages
 
----
+- **Home** -- at-a-glance gauge cards (pH, EC, VPD, DLI, photosynthetic rate,
+  running cost) and a 48-hour equipment timeline.
+- **Lights** -- manual and scheduled lighting controls.
+- **pH Dosing** -- target pH range and auto-doser toggles.
+- **Growth Photos** -- upload a plant photo and view the returned canopy analysis.
 
-## Supabase project
+Data refreshes every 5 minutes. Desktop uses a fixed sidebar; mobile uses a
+top header and tab bar.
 
-| Field | Value |
-|---|---|
-| Project name | CredHydro |
-| Project ID | `rqywzhfxyxfuywlhjghp` |
-| Region | us-west-2 |
-| REST API base URL | `https://rqywzhfxyxfuywlhjghp.supabase.co/rest/v1/` |
-
----
-
-## Repository structure
-
-```
-dashboard/        React web app (Vite + TypeScript + Tailwind)
-scripts/          Python sync scripts (Pi → Supabase)
-sql/              Database schemas and migrations
-test_data/        Local SQLite test database and upload utilities
-```
-
----
-
-## Dashboard
-
-### Tech stack
-
-- **React 18** with TypeScript
-- **Vite** for bundling and dev server
-- **Tailwind CSS** for styling
-- **Supabase JS client** for real-time database queries
-
-### What it displays
-
-#### Home — gauge cards
-
-Six at-a-glance metric cards pulled from the `ambient_raw`, `ambient_derived`, and `energy_costs` Supabase tables:
-
-| Metric | Source | Good range |
-|---|---|---|
-| **pH** | `ambient_raw.ph` | Set on the pH Dosing tab (defaults to 5.5 – 6.5 pH) |
-| **EC** | `ambient_raw.ec_us` (converted µS → mS/cm) | 1.0 – 2.5 mS/cm |
-| **VPD** | `ambient_raw.vpd_kpa` | 0.8 – 1.2 kPa |
-| **DLI** | `lights.dli_mol_m2_day` (latest row) | 12 – 17 mol/m²/day |
-| **Photosynthetic Rate** | `ambient_derived.assimilation_umol_m2_s` (latest row) | 10 – 25 µmol/m²/s |
-| **Running Cost** | Sum of all `energy_costs.energy_cost` rows | — |
-
-Each gauge card color-codes the value: green when inside the good range, amber/red outside it. A "last reading" timestamp is shown at the top of the page from the most recent `ambient_raw` row.
-
-#### Home — operations timeline
-
-An SVG timeline chart showing equipment activity over the **last 48 hours**, with 12-hour tick marks on the time axis. Four rows are rendered:
-
-| Row | Source table | Column used |
-|---|---|---|
-| **Lights** | `lights` | `energy_wh` (non-zero = on period) |
-| **Fan** | `fan` | `on_mins` |
-| **Pump** | `circulation` | `pump_on_mins` |
-| **Dosing** | `dosing_events` | event timestamp (rendered as vertical tick marks), color-coded by `direction` (`down` = red, `up` = violet) |
-
-#### pH Dosing
-
-A dual-handle slider (4 – 8 pH, snapping to 0.2 increments) sets the desired pH range. Pressing **Set** inserts a `set_ph_target` row into the `commands` queue table (`{"target_ph": <midpoint>, "ph_max_delta": <half-width>}`), same as the Lights tab's manual/schedule controls. The Home page pH gauge reads the most recently sent `set_ph_target` command to color its green/red good-range spans (range = `target_ph ± ph_max_delta`), so setting a new target here updates the Home gauge on next load.
-
-Two independent checkboxes — "Enable pH Down Auto Doser" and "Enable pH Up Auto Doser" — each send a `set_doser_auto` command immediately on toggle (`{"direction": "down" | "up", "enabled": true | false}`). Both can be on at once since the two dosers run independently.
-
-#### Growth Photos
-
-Growers photograph a tagged plant block and get Argonaut's canopy-area analysis back within about a minute. The original JPEG is uploaded as-is (no client-side resizing/re-encoding, since the Pi's analysis depends on full resolution and EXIF data) to the private `growth-photos` Storage bucket at `<device_id>/originals/<uuid>.jpg`, and a row is inserted into `photo_uploads` with `status: 'queued'`. A Raspberry Pi worker (cron, every minute) claims the row, analyses the photo, uploads an annotated overlay image, and writes back `status`/`qc_status`/`message`/`result`/`overlay_path` — all of which are Pi-only-written columns the dashboard never sets.
-
-The dashboard polls the row by id every 3 seconds while it's `queued`/`processing`, and shows:
-- **Accepted** (`done` + `qc_status: 'ok'`): the Pi's `message`, the overlay image (via a 1-hour signed URL, since the bucket is private), a per-plant table (canopy area, % change, growth rate — "First photo" where there's no earlier accepted photo to compare against), and a mean-area/spread summary. No color-coded good/bad judgment — there's no reference growth curve yet.
-- **Rejected** (`done` + `qc_status: 'rejected'`): the Pi's plain-language retake reason and a "Retake photo" button.
-- **Error**: a neutral message and a "Try again" button (the technical `error` column is admin-only and is never fetched by this feature).
-
-The last 20 uploads for the current device are listed below with status badges; clicking any of them re-opens its result view. If a user has no device assigned, an empty-state card is shown instead.
-
-### Data refresh
-
-Both hooks (`useAmbientData`, `useOperationsData`) poll Supabase every **5 minutes** via `setInterval`.
-
-### Layout
-
-- **Desktop (md+):** fixed 224 px sidebar with logo and nav, content fills the remaining width.
-- **Mobile:** sidebar is hidden; a top header bar with the logo appears instead.
-
----
-
-## Running the dashboard locally
+## Running locally
 
 ```bash
 cd dashboard
 cp .env.example .env        # fill in your Supabase URL and anon key
 npm install
-npm run dev                 # starts at http://localhost:5173
+npm run dev                 # http://localhost:5173
 ```
-
-### Environment variables
 
 | Variable | Description |
 |---|---|
-| `VITE_SUPABASE_URL` | Your Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon (public) key |
 
-### Build for production
+## Build
 
 ```bash
 npm run build   # output in dashboard/dist/
 ```
 
----
-
-## Database
-
-The Supabase schema is defined in [sql/supabase_schema.sql](sql/supabase_schema.sql). The local SQLite schema used on the Raspberry Pi is in [sql/sqlite_local_schema.sql](sql/sqlite_local_schema.sql). See [sql/argonaut_db_schema_v2.md](sql/argonaut_db_schema_v2.md) for a full schema reference.
-
-## Data sync
-
-Both scripts use only Python stdlib (`sqlite3`, `urllib`, `json`) — no pip dependencies required.
-
-### `scripts/sync_ambient.py` — incremental sync (production, runs on the Pi)
-
-Designed to run as an hourly cron job on the Argonaut Pi. It incrementally uploads only new rows to Supabase:
-
-1. Queries each table for rows where `synced_at IS NULL`
-2. POSTs them to Supabase in batches of 200 via the REST API (`on_conflict=uuid` so duplicates are safely ignored)
-3. Stamps successfully uploaded rows with `synced_at = now()` in SQLite
-
-**Tables synced:** `trials`, `ambient_raw`, `ambient_derived`, `circulation`, `lights`, `energy_costs`, `ph_dosing_training`, `calibrations`
-
-**Cron example (every hour):**
-```
-0 * * * * /usr/bin/python3 /home/argonaut-dev/scripts/sync_ambient.py >> /home/argonaut-dev/logs/sync.log 2>&1
-```
-
-**Environment variables** (or set in a `.env` file next to the script):
-
-| Variable | Description |
-|---|---|
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_KEY` | Service role key (bypasses RLS) |
-| `ARGONAUT_DB` | Path to SQLite database (default: `/var/lib/argonaut/argonaut.db`) |
-| `SYNC_TABLES` | Comma-separated list of tables to sync (default: all tables above) |
-
-### `test_data/upload_to_supabase.py` — bulk upload (dev/test use)
-
-A one-shot utility for seeding or resetting Supabase from a local copy of `argonaut.db`. Unlike the sync script, it uploads all rows unconditionally with no `synced_at` tracking. Reads credentials from `dashboard/.env` automatically when run from the repo.
-
-```bash
-python test_data/upload_to_supabase.py           # upload all rows
-python test_data/upload_to_supabase.py --clear   # wipe Supabase first, then upload
-```
-
-The `--clear` flag deletes tables in reverse order (children before parents) to respect foreign key constraints before re-uploading. It also injects a default `device_id` for older test data that pre-dates schema v2.
+Backend schema, migrations and device-side code are maintained privately.
