@@ -24,6 +24,10 @@ export function Sidebar() {
         <NavItem label="Lights" icon={LightsIcon} to="/lights" active={location.pathname === '/lights'} />
         <NavItem label="pH Dosing" icon={DropletIcon} to="/ph-dosing" active={location.pathname === '/ph-dosing'} />
         <NavItem label="Growth Photos" icon={PhotoIcon} to="/growth-photos" active={location.pathname === '/growth-photos'} />
+        {/* Admin-only until every tester unit runs command_consumer; remove the check to open it up */}
+        {profile?.is_admin && (
+          <NavItem label="Settings" icon={SettingsIcon} to="/settings" active={location.pathname === '/settings'} />
+        )}
       </nav>
 
       <div className="mt-auto flex flex-col gap-2 p-3 border-t border-gray-100">
@@ -96,6 +100,14 @@ export function PhotoIcon(): React.ReactElement {
   return (
     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M7 3a1 1 0 00-.8.4L5.25 5H4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.25l-.95-1.6A1 1 0 0013 3H7zm3 5a4 4 0 110 8 4 4 0 010-8zm0 2a2 2 0 100 4 2 2 0 000-4z" clipRule="evenodd" />
+    </svg>
+  )
+}
+
+export function SettingsIcon(): React.ReactElement {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.53 1.53 0 01-2.29.95c-1.37-.84-2.94.73-2.1 2.1.54.88.07 2.03-.95 2.29-1.56.38-1.56 2.6 0 2.98 1.02.25 1.49 1.4.95 2.29-.84 1.37.73 2.94 2.1 2.1a1.53 1.53 0 012.29.95c.38 1.56 2.6 1.56 2.98 0a1.53 1.53 0 012.29-.95c1.37.84 2.94-.73 2.1-2.1a1.53 1.53 0 01.95-2.29c1.56-.38 1.56-2.6 0-2.98a1.53 1.53 0 01-.95-2.29c.84-1.37-.73-2.94-2.1-2.1a1.53 1.53 0 01-2.29-.95zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
     </svg>
   )
 }

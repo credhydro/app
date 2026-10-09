@@ -1,9 +1,11 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { HomeIcon, LightsIcon, DropletIcon, PhotoIcon } from './Sidebar'
+import { useAuth } from '../context/AuthContext'
+import { HomeIcon, LightsIcon, DropletIcon, PhotoIcon, SettingsIcon } from './Sidebar'
 
 export function MobileTabBar() {
   const location = useLocation()
+  const { profile } = useAuth()
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-white border-t border-gray-100 flex items-stretch pb-[env(safe-area-inset-bottom)]">
@@ -11,6 +13,10 @@ export function MobileTabBar() {
       <TabItem label="Lights" icon={LightsIcon} to="/lights" active={location.pathname === '/lights'} />
       <TabItem label="pH Dosing" icon={DropletIcon} to="/ph-dosing" active={location.pathname === '/ph-dosing'} />
       <TabItem label="Photos" icon={PhotoIcon} to="/growth-photos" active={location.pathname === '/growth-photos'} />
+      {/* Admin-only for now -- see Sidebar.tsx */}
+      {profile?.is_admin && (
+        <TabItem label="Settings" icon={SettingsIcon} to="/settings" active={location.pathname === '/settings'} />
+      )}
     </nav>
   )
 }
