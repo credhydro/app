@@ -60,8 +60,8 @@ export function useLightSource(): LightSource {
 /** What the DLI gauge should say about where its number came from. */
 export function dliDescription(src: LightSource, dli: number | null): { note: string | null; emptyText: string } {
   const sunlit = src.environment !== 'indoor'
-  if (src.sensorDetected) return { note: 'Measured by light sensor', emptyText: 'Not enough readings yet' }
+  if (src.sensorDetected) return { note: 'Last photoperiod · measured', emptyText: 'Available after the first full photoperiod' }
   if (sunlit) return { note: null, emptyText: 'Connect a light sensor to measure sunlight' }
-  if (!src.lightsInstalled) return { note: 'No grow lights set up', emptyText: 'Not enough readings yet' }
-  return { note: dli != null ? 'Estimated from LED settings' : null, emptyText: 'Not enough readings yet' }
+  if (!src.lightsInstalled) return { note: 'Last photoperiod · no grow lights', emptyText: 'Available after the first full photoperiod' }
+  return { note: dli != null ? 'Last photoperiod · estimated from LEDs' : null, emptyText: 'Available after the first full photoperiod' }
 }
