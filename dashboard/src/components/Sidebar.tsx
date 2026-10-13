@@ -24,6 +24,7 @@ export function Sidebar() {
         <NavItem label="Lights" icon={LightsIcon} to="/lights" active={location.pathname === '/lights'} />
         <NavItem label="pH Dosing" icon={DropletIcon} to="/ph-dosing" active={location.pathname === '/ph-dosing'} />
         <NavItem label="Pump" icon={PumpIcon} to="/pump" active={location.pathname === '/pump'} />
+        <NavItem label="Fans" icon={FanIcon} to="/fans" active={location.pathname === '/fans'} />
         <NavItem label="Growth Photos" icon={PhotoIcon} to="/growth-photos" active={location.pathname === '/growth-photos'} />
         {/* Admin-only until every tester unit runs command_consumer; remove the check to open it up */}
         {profile?.is_admin && (
@@ -101,6 +102,14 @@ export function PumpIcon(): React.ReactElement {
   return (
     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.1A7 7 0 0116.9 8.1a1 1 0 01-1.94.5A5 5 0 006.6 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.06 9.1a1 1 0 011.22.72A5 5 0 0013.4 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.1a7 7 0 01-11.66-2.58 1 1 0 01.72-1.22z" clipRule="evenodd" />
+    </svg>
+  )
+}
+
+export function FanIcon(): React.ReactElement {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M10 8.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM9.2 7.1C8.6 4.6 9.4 2 11.6 2c1.9 0 2.6 2.4 1 4.1-.8.9-2 1.1-3.4 1zM12.9 9.2c2.5-.6 5.1.2 5.1 2.4 0 1.9-2.4 2.6-4.1 1-.9-.8-1.1-2-1-3.4zM10.8 12.9c.6 2.5-.2 5.1-2.4 5.1-1.9 0-2.6-2.4-1-4.1.8-.9 2-1.1 3.4-1zM7.1 10.8C4.6 11.4 2 10.6 2 8.4 2 6.5 4.4 5.8 6.1 7.4c.9.8 1.1 2 1 3.4z" />
     </svg>
   )
 }
