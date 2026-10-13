@@ -18,6 +18,10 @@ export interface DeviceConfig {
   ENVIRONMENT_TYPE: 'indoor' | 'greenhouse' | 'outdoor' | null
   /** Missing on older units -- treat as true. */
   LIGHTS_INSTALLED: boolean | null
+  CIRC_DURATION_MINS: number | null
+  CIRC_LEAD_MINS: number | null
+  /** ISO time the maintenance pause ends; null/past = not paused. */
+  PUMP_PAUSED_UNTIL: string | null
   PEAK_HOURS: number[] | null
   PEAK_RATE_SUMMER: number | null
   NONPEAK_RATE_SUMMER: number | null
@@ -35,7 +39,10 @@ export interface DeviceConfig {
   SMS_ALERTS: boolean | null
 }
 
-export const SETTINGS_COMMANDS = ['update_grow_config', 'set_grower_contact', 'report_config'] as const
+export const SETTINGS_COMMANDS = [
+  'update_grow_config', 'set_grower_contact', 'report_config',
+  'pump_pause', 'pump_resume', 'pump_run_cycle',
+] as const
 
 export interface DeviceConfigState {
   config: DeviceConfig | null

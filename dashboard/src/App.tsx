@@ -8,6 +8,7 @@ import { LightsPage } from './pages/LightsPage'
 import { PhDosingPage } from './pages/PhDosingPage'
 import { GrowthPhotosPage } from './pages/GrowthPhotosPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { PumpPage } from './pages/PumpPage'
 
 function DashboardLayout() {
   return (
@@ -54,6 +55,7 @@ export default function App() {
             <Route index element={<HomePane />} />
             <Route path="lights" element={<LightsPage />} />
             <Route path="ph-dosing" element={<PhDosingPage />} />
+            <Route path="pump" element={<PumpPage />} />
             <Route path="growth-photos" element={<GrowthPhotosPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
