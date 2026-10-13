@@ -1,11 +1,14 @@
 import { useAmbientData } from '../hooks/useAmbientData'
 import { usePhTargetStatus } from '../hooks/usePhTargetStatus'
 import { GaugeCard } from './GaugeCard'
+import { useLightSource, dliDescription } from '../hooks/useLightSource'
 import { TimelineChart } from './TimelineChart'
 
 export function HomePane() {
   const { latest, dli, assimilation, totalCost, loading, error } = useAmbientData()
   const { targetPh, phMaxDelta } = usePhTargetStatus()
+  const lightSource = useLightSource()
+  const dliInfo = dliDescription(lightSource, dli)
 
   const phGoodMin = targetPh != null && phMaxDelta != null
     ? Math.round((targetPh - phMaxDelta) * 10) / 10
@@ -86,6 +89,8 @@ export function HomePane() {
           goodMin={12}
           goodMax={17}
           decimals={1}
+          note={dliInfo.note}
+          emptyText={dliInfo.emptyText}
         />
         <GaugeCard
           label="Photosynthetic Rate"

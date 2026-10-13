@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { Card, Field, NumberInput, SaveRow, diff, inputCls } from '../components/FormBits'
 import {
   useDeviceConfig,
   sendSettingsCommand,
@@ -89,12 +90,6 @@ export function SettingsPage() {
             onDone={refresh}
           />
           <SystemSection
-            config={config}
-            deviceId={selectedDevice}
-            trial={selectedTrial}
-            onDone={refresh}
-          />
-          <LightsSection
             config={config}
             deviceId={selectedDevice}
             trial={selectedTrial}
@@ -329,52 +324,6 @@ function SystemSection({ config, deviceId, trial, onDone }: SectionProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Lights
-// ---------------------------------------------------------------------------
-
-function LightsSection({ config, deviceId, trial, onDone }: SectionProps) {
-  const initial = {
-    LIGHTS_PPFD_UMOL: config.LIGHTS_PPFD_UMOL ?? 0,
-    LIGHTS_POWER_W: config.LIGHTS_POWER_W ?? 0,
-  }
-  const [draft, setDraft] = useState(initial)
-  const [outcome, setOutcome] = useState<CommandOutcome | null>(null)
-  useEffect(() => {
-    setDraft(initial)
-  }, [config.LIGHTS_PPFD_UMOL, config.LIGHTS_POWER_W])
-
-  const changes = diff(initial, draft)
-  const valid =
-    draft.LIGHTS_PPFD_UMOL >= 0 && draft.LIGHTS_PPFD_UMOL <= 2500 &&
-    draft.LIGHTS_POWER_W >= 0 && draft.LIGHTS_POWER_W <= 5000
-
-  async function send() {
-    await sendSettingsCommand(deviceId, 'update_grow_config', { changes }, trial, o => {
-      setOutcome(o)
-      if (o.state === 'completed') onDone()
-    })
-  }
-
-  return (
-    <Card title="Grow lights">
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Intensity (µmol/m²/s)" hint="PPFD at canopy height, from your fixture's spec sheet.">
-          <NumberInput value={draft.LIGHTS_PPFD_UMOL} step={5} onChange={v => setDraft({ ...draft, LIGHTS_PPFD_UMOL: v })} />
-        </Field>
-        <Field label="Fixture power (W)" hint="Used for energy cost.">
-          <NumberInput value={draft.LIGHTS_POWER_W} step={1} onChange={v => setDraft({ ...draft, LIGHTS_POWER_W: v })} />
-        </Field>
-      </div>
-      <SaveRow
-        disabled={Object.keys(changes).length === 0 || !valid || outcome?.state === 'waiting'}
-        outcome={outcome}
-        onSave={send}
-      />
-    </Card>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // Electricity
 // ---------------------------------------------------------------------------
 
@@ -482,7 +431,7 @@ function StatusSection({ config, isAdmin }: { config: DeviceConfig; isAdmin: boo
           </div>
         ))}
       </dl>
-      <p className="text-xs text-gray-400">Change the light schedule and pH targets on their own tabs.</p>
+      <p className="text-xs text-gray-400">Change lights and pH settings on their own tabs.</p>
     </Card>
   )
 }
@@ -491,82 +440,11 @@ function StatusSection({ config, isAdmin }: { config: DeviceConfig; isAdmin: boo
 // Small building blocks
 // ---------------------------------------------------------------------------
 
-const inputCls =
-  'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500'
-
-function diff<T extends Record<string, unknown>>(a: T, b: T): Partial<T> {
-  const out: Partial<T> = {}
-  for (const k of Object.keys(b) as (keyof T)[]) {
-    if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) out[k] = b[k]
-  }
-  return out
-}
-
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="p-4 md:p-8 flex flex-col gap-6 max-w-2xl">
       <h1 className="text-xl font-semibold text-gray-700">Settings</h1>
       {children}
-    </div>
-  )
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
-      {children}
-    </section>
-  )
-}
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-gray-600">{label}</span>
-      {children}
-      {hint && <span className="text-xs text-gray-400">{hint}</span>}
-    </label>
-  )
-}
-
-function NumberInput({ value, step, onChange }: { value: number; step: number; onChange: (v: number) => void }) {
-  return (
-    <input
-      type="number"
-      inputMode="decimal"
-      step={step}
-      value={Number.isFinite(value) ? value : ''}
-      onChange={e => onChange(e.target.value === '' ? NaN : Number(e.target.value))}
-      className={inputCls}
-    />
-  )
-}
-
-function SaveRow({
-  disabled,
-  outcome,
-  onSave,
-}: {
-  disabled: boolean
-  outcome: CommandOutcome | null
-  onSave: () => void
-}) {
-  const waiting = outcome?.state === 'waiting'
-  return (
-    <div className="flex flex-col gap-2">
-      <button
-        onClick={onSave}
-        disabled={disabled}
-        className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-40"
-      >
-        {waiting ? 'Sending to Argonaut…' : 'Save'}
-      </button>
-      {waiting && (
-        <p className="text-xs text-amber-600">Waiting for Argonaut to apply this. Usually under a minute.</p>
-      )}
-      {outcome?.state === 'completed' && <p className="text-xs text-emerald-600">Saved on Argonaut ✓</p>}
-      {outcome?.state === 'failed' && <p className="text-xs text-red-500">{outcome.message}</p>}
     </div>
   )
 }

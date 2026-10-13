@@ -14,6 +14,10 @@ export interface DeviceConfig {
   SYSTEM_VOLUME_GAL: number | null
   LIGHTS_PPFD_UMOL: number | null
   LIGHTS_POWER_W: number | null
+  /** Missing on units that predate the Light setup panel -- treat as 'indoor'. */
+  ENVIRONMENT_TYPE: 'indoor' | 'greenhouse' | 'outdoor' | null
+  /** Missing on older units -- treat as true. */
+  LIGHTS_INSTALLED: boolean | null
   PEAK_HOURS: number[] | null
   PEAK_RATE_SUMMER: number | null
   NONPEAK_RATE_SUMMER: number | null

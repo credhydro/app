@@ -7,6 +7,10 @@ interface Props {
   goodMin: number
   goodMax: number
   decimals?: number
+  /** Small line under the value, e.g. "Estimated from LED settings". */
+  note?: string | null
+  /** Shown instead of "—" when value is null. */
+  emptyText?: string
 }
 
 const W = 220
@@ -35,7 +39,7 @@ function valueToAngle(v: number, min: number, max: number) {
   return 180 + ((v - min) / (max - min)) * 180
 }
 
-export function GaugeCard({ label, value, unit, min, max, goodMin, goodMax, decimals = 1 }: Props) {
+export function GaugeCard({ label, value, unit, min, max, goodMin, goodMax, decimals = 1, note, emptyText }: Props) {
   const trackStart = 180
   const trackEnd = 360
 
@@ -112,9 +116,12 @@ export function GaugeCard({ label, value, unit, min, max, goodMin, goodMax, deci
             </span>
             <span className="text-sm text-gray-400 mt-0.5">{unit}</span>
           </>
+        ) : emptyText ? (
+          <span className="text-sm text-gray-400 text-center px-2 py-2">{emptyText}</span>
         ) : (
           <span className="text-2xl text-gray-300">—</span>
         )}
+        {note && value != null && <span className="text-xs text-gray-400 mt-1">{note}</span>}
       </div>
 
       <div className="flex justify-between w-full text-xs text-gray-300 px-2">

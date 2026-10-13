@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLightsStatus } from '../hooks/useLightsStatus'
 import { sendCommand } from '../lib/commands'
+import { useDeviceConfig } from '../hooks/useDeviceConfig'
+import { useLightSource } from '../hooks/useLightSource'
+import { LightSetupCard } from '../components/LightSetupCard'
 
 function formatHour(h: number): string {
   if (h === 0) return '12AM'
@@ -13,8 +16,12 @@ function formatHour(h: number): string {
 type Mode = 'on' | 'off' | 'auto'
 
 export function LightsPage() {
-  const { selectedDevice, selectedTrial } = useAuth()
+  const { selectedDevice, selectedTrial, profile } = useAuth()
   const { isOn, lastReading, pendingCommand, schedule, loading, error } = useLightsStatus()
+  const { config, refresh } = useDeviceConfig()
+  const lightSource = useLightSource()
+  // Older units have no LIGHTS_INSTALLED key: treat as installed, like the Pi does.
+  const lightsInstalled = config ? config.LIGHTS_INSTALLED !== false : true
   const [draftSchedule, setDraftSchedule] = useState<number[]>([])
   const [sending, setSending] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -92,6 +99,14 @@ export function LightsPage() {
         <div className="text-sm text-red-500">{error}</div>
       )}
 
+      {!lightsInstalled && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-sm text-gray-500">
+          This system is set up without grow lights, so there's nothing to switch or schedule.
+          Turn on "LED grow lights are part of this system" below if that changes.
+        </div>
+      )}
+
+      {lightsInstalled && (<>
       {/* Manual controls */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Manual Control</h2>
@@ -177,6 +192,18 @@ export function LightsPage() {
           {sending ? 'Sending…' : saveSuccess ? 'Schedule sent ✓' : 'Save Schedule'}
         </button>
       </div>
+      </>)}
+
+      {/* Admin-only until every tester unit runs command_consumer (same gate as Settings) */}
+      {profile?.is_admin && selectedDevice && config && (
+        <LightSetupCard
+          config={config}
+          source={lightSource}
+          deviceId={selectedDevice}
+          trial={selectedTrial}
+          onDone={refresh}
+        />
+      )}
     </div>
   )
 }
