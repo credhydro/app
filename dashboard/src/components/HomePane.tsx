@@ -2,12 +2,15 @@ import { useAmbientData } from '../hooks/useAmbientData'
 import { usePhTargetStatus } from '../hooks/usePhTargetStatus'
 import { GaugeCard } from './GaugeCard'
 import { useLightSource, dliDescription } from '../hooks/useLightSource'
+import { useAlerts } from '../hooks/useAlerts'
+import { DailyBriefCard } from './DailyBriefCard'
 import { TimelineChart } from './TimelineChart'
 
 export function HomePane() {
   const { latest, dli, assimilation, totalCost, loading, error } = useAmbientData()
   const { targetPh, phMaxDelta } = usePhTargetStatus()
   const lightSource = useLightSource()
+  const alerts = useAlerts()
   const dliInfo = dliDescription(lightSource, dli)
 
   const phGoodMin = targetPh != null && phMaxDelta != null
@@ -47,6 +50,10 @@ export function HomePane() {
         {lastUpdated && (
           <span className="text-xs text-gray-400">Last reading: {lastUpdated}</span>
         )}
+      </div>
+
+      <div className="max-w-3xl">
+        <DailyBriefCard alerts={alerts} />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
