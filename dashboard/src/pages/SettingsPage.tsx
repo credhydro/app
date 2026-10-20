@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Card, Field, NumberInput, SaveRow, diff, inputCls } from '../components/FormBits'
+import { tempUnit } from '../lib/units'
 import {
   useDeviceConfig,
   sendSettingsCommand,
@@ -96,6 +97,12 @@ export function SettingsPage() {
             onDone={refresh}
           />
           <EnergySection
+            config={config}
+            deviceId={selectedDevice}
+            trial={selectedTrial}
+            onDone={refresh}
+          />
+          <DisplaySection
             config={config}
             deviceId={selectedDevice}
             trial={selectedTrial}
@@ -407,6 +414,67 @@ function EnergySection({ config, deviceId, trial, onDone }: SectionProps) {
 // ---------------------------------------------------------------------------
 // Read-only status
 // ---------------------------------------------------------------------------
+
+function DisplaySection({ config, deviceId, trial, onDone }: SectionProps) {
+  const initial = {
+    TEMP_UNIT: tempUnit(config) as string,
+    AGENT_NOTES: config.AGENT_NOTES ?? '',
+  }
+  const [draft, setDraft] = useState(initial)
+  const [outcome, setOutcome] = useState<CommandOutcome | null>(null)
+
+  useEffect(() => {
+    setDraft(initial)
+  }, [config.TEMP_UNIT, config.TIMEZONE, config.AGENT_NOTES])
+
+  const changes = diff(initial, draft)
+
+  async function save() {
+    await sendSettingsCommand(deviceId, 'update_grow_config', { changes }, trial, o => {
+      setOutcome(o)
+      if (o.state === 'completed') onDone()
+    })
+  }
+
+  return (
+    <Card title="Display & daily brief">
+      <Field label="Temperature unit" hint="How temperatures are shown to you, including in daily briefs. Stored data isn't changed.">
+        <div className="grid grid-cols-2 gap-2 max-w-xs">
+          {(['F', 'C'] as const).map(u => (
+            <button
+              key={u}
+              type="button"
+              onClick={() => setDraft({ ...draft, TEMP_UNIT: u })}
+              aria-pressed={draft.TEMP_UNIT === u}
+              className={`py-2 rounded-xl text-sm font-medium border transition-colors ${
+                draft.TEMP_UNIT === u
+                  ? 'bg-emerald-500 border-emerald-500 text-white'
+                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              °{u} — {u === 'F' ? 'Fahrenheit' : 'Celsius'}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      <Field
+        label="Notes for your daily brief"
+        hint="Anything Argonaut should already know when it reviews your grow, e.g. “pH dips during lights-on every day — known, not a fault.” Up to 600 characters."
+      >
+        <textarea
+          rows={3}
+          maxLength={600}
+          value={draft.AGENT_NOTES}
+          onChange={e => setDraft({ ...draft, AGENT_NOTES: e.target.value })}
+          className={inputCls}
+        />
+      </Field>
+
+      <SaveRow disabled={Object.keys(changes).length === 0 || outcome?.state === 'waiting'} outcome={outcome} onSave={save} />
+    </Card>
+  )
+}
 
 function StatusSection({ config, isAdmin }: { config: DeviceConfig; isAdmin: boolean }) {
   const onHours = config.LIGHTS_ON_PERIOD ?? []

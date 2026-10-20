@@ -29,6 +29,9 @@ export interface DeviceConfig {
   FAN_WATTS: number | null
   FAN_OVERRIDE_MODE: 'on' | 'off' | null
   FAN_OVERRIDE_UNTIL: string | null
+  /** Display only -- the database always stores Celsius. Missing on older units. */
+  TEMP_UNIT: 'F' | 'C' | null
+  AGENT_NOTES: string | null
   PEAK_HOURS: number[] | null
   PEAK_RATE_SUMMER: number | null
   NONPEAK_RATE_SUMMER: number | null
