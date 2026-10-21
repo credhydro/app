@@ -49,7 +49,7 @@ function useNow(): number {
 }
 
 export function PumpPage() {
-  const { selectedDevice, selectedTrial, profile } = useAuth()
+  const { selectedDevice, selectedTrial } = useAuth()
   const { config, loading, error, refresh } = useDeviceConfig()
   const lastRun = useLastRun(selectedDevice)
   const now = useNow()
@@ -69,27 +69,21 @@ export function PumpPage() {
   const system = (config.SYSTEM_TYPE ?? '').toUpperCase()
   const pausedUntil = config.PUMP_PAUSED_UNTIL ? new Date(config.PUMP_PAUSED_UNTIL) : null
   const paused = pausedUntil !== null && pausedUntil.getTime() > now
-  const isAdmin = !!profile?.is_admin
 
   return (
     <Shell>
       <ModeCard system={system} config={config} paused={paused} pausedUntil={pausedUntil} now={now} lastRun={lastRun} />
 
-      {/* Controls send commands -- admin-only until every tester unit runs command_consumer (same gate as Settings) */}
-      {isAdmin && (
-        <>
-          <PauseCard
-            deviceId={selectedDevice}
-            trial={selectedTrial}
-            paused={paused}
-            pausedUntil={pausedUntil}
-            system={system}
-            onDone={refresh}
-          />
-          {system !== 'NFT' && (
-            <CycleCard config={config} system={system} deviceId={selectedDevice} trial={selectedTrial} paused={paused} onDone={refresh} />
-          )}
-        </>
+      <PauseCard
+        deviceId={selectedDevice}
+        trial={selectedTrial}
+        paused={paused}
+        pausedUntil={pausedUntil}
+        system={system}
+        onDone={refresh}
+      />
+      {system !== 'NFT' && (
+        <CycleCard config={config} system={system} deviceId={selectedDevice} trial={selectedTrial} paused={paused} onDone={refresh} />
       )}
     </Shell>
   )

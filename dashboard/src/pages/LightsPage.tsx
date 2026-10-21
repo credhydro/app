@@ -16,7 +16,7 @@ function formatHour(h: number): string {
 type Mode = 'on' | 'off' | 'auto'
 
 export function LightsPage() {
-  const { selectedDevice, selectedTrial, profile } = useAuth()
+  const { selectedDevice, selectedTrial } = useAuth()
   const { isOn, lastReading, pendingCommand, schedule, loading, error } = useLightsStatus()
   const { config, refresh } = useDeviceConfig()
   const lightSource = useLightSource()
@@ -194,8 +194,7 @@ export function LightsPage() {
       </div>
       </>)}
 
-      {/* Admin-only until every tester unit runs command_consumer (same gate as Settings) */}
-      {profile?.is_admin && selectedDevice && config && (
+      {selectedDevice && config && (
         <LightSetupCard
           config={config}
           source={lightSource}

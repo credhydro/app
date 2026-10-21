@@ -27,10 +27,7 @@ export function Sidebar() {
         <NavItem label="Pump" icon={PumpIcon} to="/pump" active={location.pathname === '/pump'} />
         <NavItem label="Fans" icon={FanIcon} to="/fans" active={location.pathname === '/fans'} />
         <NavItem label="Growth Photos" icon={PhotoIcon} to="/growth-photos" active={location.pathname === '/growth-photos'} />
-        {/* Admin-only until every tester unit runs command_consumer; remove the check to open it up */}
-        {profile?.is_admin && (
-          <NavItem label="Settings" icon={SettingsIcon} to="/settings" active={location.pathname === '/settings'} />
-        )}
+        <NavItem label="Settings" icon={SettingsIcon} to="/settings" active={location.pathname === '/settings'} />
       </nav>
 
       <div className="mt-auto flex flex-col gap-2 p-3 border-t border-gray-100">

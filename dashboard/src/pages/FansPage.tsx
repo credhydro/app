@@ -52,7 +52,7 @@ function useNow(): number {
 }
 
 export function FansPage() {
-  const { selectedDevice, selectedTrial, profile } = useAuth()
+  const { selectedDevice, selectedTrial } = useAuth()
   const { config, loading, error, refresh } = useDeviceConfig()
   const lastRun = useLastFanRun(selectedDevice)
   const now = useNow()
@@ -75,13 +75,8 @@ export function FansPage() {
   return (
     <Shell>
       <StatusCard config={config} override={override} now={now} lastRun={lastRun} />
-      {/* Controls admin-only until every tester unit runs command_consumer (same gate as Settings) */}
-      {profile?.is_admin && (
-        <>
-          <OverrideCard deviceId={selectedDevice} trial={selectedTrial} override={override} onDone={refresh} />
-          <ScheduleCard config={config} deviceId={selectedDevice} trial={selectedTrial} onDone={refresh} />
-        </>
-      )}
+      <OverrideCard deviceId={selectedDevice} trial={selectedTrial} override={override} onDone={refresh} />
+      <ScheduleCard config={config} deviceId={selectedDevice} trial={selectedTrial} onDone={refresh} />
     </Shell>
   )
 }
