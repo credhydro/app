@@ -12,8 +12,6 @@ export function AlertsPage() {
   const { alerts, briefs, loading, error, dismiss, undismiss } = useAlerts()
   const [filter, setFilter] = useState<Filter>('attention')
   const [showDismissed, setShowDismissed] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
   const [allBriefs, setAllBriefs] = useState(false)
   const briefsShown = allBriefs ? briefs : briefs.slice(0, 5)
 
@@ -22,18 +20,11 @@ export function AlertsPage() {
   const dismissed = inFilter.filter(a => a.dismissed)
   const shown = showDismissed ? dismissed : open
 
-  async function run(action: () => Promise<string | null>) {
-    setBusy(true)
-    const err = await action()
-    setActionError(err ? `Couldn't update: ${err}` : null)
-    setBusy(false)
-  }
 
   return (
     <div className="p-4 md:p-8 flex flex-col gap-6 max-w-2xl">
       <h1 className="text-xl font-semibold text-gray-700">Alerts</h1>
       {error && <div className="text-sm text-red-500">{error}</div>}
-      {actionError && <div className="text-sm text-red-500">{actionError}</div>}
 
       <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
@@ -54,8 +45,7 @@ export function AlertsPage() {
         {!showDismissed && open.length > 1 && (
           <div className="flex justify-end -mt-2">
             <button
-              onClick={() => run(() => dismiss(open.map(a => a.uuid)))}
-              disabled={busy}
+              onClick={() => dismiss(open.map(a => a.uuid))}
               className="text-xs font-medium text-gray-500 hover:text-gray-700 disabled:opacity-40"
             >
               Dismiss all {open.length}
@@ -75,9 +65,8 @@ export function AlertsPage() {
               <AlertItem
                 key={a.uuid}
                 a={a}
-                busy={busy}
-                onDismiss={() => run(() => dismiss([a.uuid]))}
-                onUndo={() => run(() => undismiss(a.uuid))}
+                onDismiss={() => dismiss([a.uuid])}
+                onUndo={() => undismiss(a.uuid)}
               />
             ))}
           </ul>
@@ -91,7 +80,10 @@ export function AlertsPage() {
             {showDismissed ? '← Back to open alerts' : `Show dismissed (${dismissed.length})`}
           </button>
         )}
-        <p className="text-xs text-gray-400">Alerts reach this page within about an hour. Critical ones will also be sent by text once SMS is set up.</p>
+        <p className="text-xs text-gray-400">
+          Alerts reach this page within about an hour. Dismissing only hides an alert on this device's browser —
+          if the problem comes back, it shows up as a new alert.
+        </p>
       </section>
 
       <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
@@ -130,9 +122,8 @@ export function AlertsPage() {
   )
 }
 
-function AlertItem({ a, busy, onDismiss, onUndo }: {
+function AlertItem({ a, onDismiss, onUndo }: {
   a: AlertRow
-  busy: boolean
   onDismiss: () => void
   onUndo: () => void
 }) {
@@ -155,7 +146,6 @@ function AlertItem({ a, busy, onDismiss, onUndo }: {
       </div>
       <button
         onClick={a.dismissed ? onUndo : onDismiss}
-        disabled={busy}
         className="ml-auto self-start shrink-0 text-xs font-medium text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-50 disabled:opacity-40"
         aria-label={a.dismissed ? 'Restore this alert' : 'Dismiss this alert'}
       >

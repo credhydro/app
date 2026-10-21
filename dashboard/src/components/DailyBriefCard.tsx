@@ -1,23 +1,32 @@
 import { Link } from 'react-router-dom'
-import { TAB_LINKS, type AlertsState } from '../hooks/useAlerts'
+import { TAB_LINKS, activeAlerts, alertTitle, type AlertsState } from '../hooks/useAlerts'
 
 /** Top-of-Home card: the latest daily brief, plus a banner if any alert is open. */
 export function DailyBriefCard({ alerts }: { alerts: AlertsState }) {
   const latest = alerts.briefs[0]
+  const active = activeAlerts(alerts)
   const link = latest?.brief.worth_a_look_tab ? TAB_LINKS[latest.brief.worth_a_look_tab] : null
 
   return (
     <div className="flex flex-col gap-3">
-      {alerts.activeCount > 0 && (
-        <Link
-          to="/alerts"
-          className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 flex items-center justify-between"
-        >
-          <span className="font-medium">
-            {alerts.activeCount} alert{alerts.activeCount > 1 ? 's' : ''} need{alerts.activeCount > 1 ? '' : 's'} attention
-          </span>
-          <span>View →</span>
-        </Link>
+      {active.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 flex items-center gap-3">
+          <Link to="/alerts" className="flex-1 min-w-0">
+            <span className="font-medium">
+              {active.length === 1
+                ? alertTitle(active[0].alert_type)
+                : `${active.length} alerts need attention`}
+            </span>
+            <span className="ml-2 text-red-600">View →</span>
+          </Link>
+          <button
+            onClick={() => alerts.dismiss(active.map(a => a.uuid))}
+            className="shrink-0 text-xs font-medium text-red-600 hover:text-red-800 px-2 py-1 rounded-lg hover:bg-red-100"
+            aria-label="Dismiss these alerts"
+          >
+            Dismiss
+          </button>
+        </div>
       )}
 
       {latest && (

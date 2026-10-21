@@ -20,7 +20,7 @@ export interface AlertRow {
   metadata: Record<string, unknown> | null
   /** Derived: closed by resolved_at or by a later recovery row (metadata.resolves_uuid). */
   resolved: boolean
-  /** Cleared by a grower from the Alerts tab (public.alert_dismissals). */
+  /** Hidden by the grower in this browser (localStorage only -- never saved anywhere). */
   dismissed: boolean
 }
 
@@ -30,8 +30,33 @@ export interface AlertsState {
   activeCount: number         // unresolved, undismissed warning/critical from the last 7 days
   loading: boolean
   error: string | null
-  dismiss: (uuids: string[]) => Promise<string | null>
-  undismiss: (uuid: string) => Promise<string | null>
+  dismiss: (uuids: string[]) => void
+  undismiss: (uuid: string) => void
+}
+
+// ---- in-browser dismissals ---------------------------------------------------
+// A dismissal only hides that one alert row in this browser. A problem that
+// comes back tomorrow is a new row, so it shows again. Entries older than
+// KEEP_DAYS are pruned so the list can't grow forever.
+const STORAGE_KEY = 'argonaut.dismissedAlerts.v1'
+const KEEP_DAYS = 30
+
+function readDismissed(): Record<string, number> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, number>
+    const cutoff = Date.now() - KEEP_DAYS * 86400000
+    return Object.fromEntries(Object.entries(raw).filter(([, t]) => typeof t === 'number' && t >= cutoff))
+  } catch {
+    return {}
+  }
+}
+
+function writeDismissed(map: Record<string, number>): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
+  } catch {
+    // private window / storage blocked: dismissals just last until the page reloads
+  }
 }
 
 const WINDOW_DAYS = 30
@@ -54,22 +79,23 @@ function parseMeta(raw: unknown): Record<string, unknown> | null {
  */
 export function useAlerts(): AlertsState {
   const { selectedDevice } = useAuth()
-  const [state, setState] = useState<Omit<AlertsState, 'dismiss' | 'undismiss'>>({ briefs: [], alerts: [], activeCount: 0, loading: true, error: null })
-  const [reloadKey, setReloadKey] = useState(0)
+  const [raw, setRaw] = useState<{ briefs: AlertsState['briefs']; rows: Omit<AlertRow, 'dismissed'>[]; loading: boolean; error: string | null }>({
+    briefs: [], rows: [], loading: true, error: null,
+  })
+  const [dismissedMap, setDismissedMap] = useState<Record<string, number>>(() => readDismissed())
 
-  async function dismiss(uuids: string[]): Promise<string | null> {
-    if (!selectedDevice || uuids.length === 0) return null
-    const { data: { user } } = await supabase.auth.getUser()
-    const rows = uuids.map(u => ({ alert_uuid: u, device_id: selectedDevice, dismissed_by: user?.id }))
-    const { error } = await supabase.from('alert_dismissals').upsert(rows, { onConflict: 'alert_uuid', ignoreDuplicates: true })
-    setReloadKey(k => k + 1)
-    return error?.message ?? null
+  function dismiss(uuids: string[]): void {
+    if (uuids.length === 0) return
+    const next = { ...readDismissed(), ...Object.fromEntries(uuids.map(u => [u, Date.now()])) }
+    writeDismissed(next)
+    setDismissedMap(next)
   }
 
-  async function undismiss(uuid: string): Promise<string | null> {
-    const { error } = await supabase.from('alert_dismissals').delete().eq('alert_uuid', uuid)
-    setReloadKey(k => k + 1)
-    return error?.message ?? null
+  function undismiss(uuid: string): void {
+    const next = { ...readDismissed() }
+    delete next[uuid]
+    writeDismissed(next)
+    setDismissedMap(next)
   }
 
   useEffect(() => {
@@ -77,21 +103,16 @@ export function useAlerts(): AlertsState {
     let cancelled = false
     async function load() {
       const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
-      const [res, dis] = await Promise.all([
-        supabase
-          .from('alerts')
-          .select('uuid, datetime_utc, alert_type, severity, message, resolved_at, metadata')
-          .eq('device_id', selectedDevice)
-          .gte('datetime_utc', since)
-          .order('datetime_utc', { ascending: false })
-          .limit(300),
-        supabase.from('alert_dismissals').select('alert_uuid').eq('device_id', selectedDevice),
-      ])
+      const res = await supabase
+        .from('alerts')
+        .select('uuid, datetime_utc, alert_type, severity, message, resolved_at, metadata')
+        .eq('device_id', selectedDevice)
+        .gte('datetime_utc', since)
+        .order('datetime_utc', { ascending: false })
+        .limit(300)
       if (cancelled) return
-      // If the dismissals table isn't there yet, alerts still show -- nothing counts as dismissed.
-      const dismissedSet = new Set((dis.error ? [] : dis.data ?? []).map(d => d.alert_uuid as string))
       if (res.error) {
-        setState(s => ({ ...s, loading: false, error: res.error.message }))
+        setRaw(s => ({ ...s, loading: false, error: res.error.message }))
         return
       }
       const rows = (res.data ?? []).map(r => ({ ...r, metadata: parseMeta(r.metadata) }))
@@ -101,15 +122,10 @@ export function useAlerts(): AlertsState {
       const briefs = rows
         .filter(r => r.alert_type === 'daily_brief' && r.metadata?.brief)
         .map(r => ({ at: r.datetime_utc, brief: r.metadata!.brief as Brief }))
-      const alerts: AlertRow[] = rows
+      const alertRows = rows
         .filter(r => r.alert_type !== 'daily_brief')
-        .map(r => ({ ...r, resolved: !!r.resolved_at || resolvedBy.has(r.uuid), dismissed: dismissedSet.has(r.uuid) }))
-      const activeSince = Date.now() - ACTIVE_DAYS * 86400000
-      const activeCount = alerts.filter(
-        a => !a.resolved && !a.dismissed && (a.severity === 'warning' || a.severity === 'critical') &&
-             new Date(a.datetime_utc).getTime() >= activeSince,
-      ).length
-      setState({ briefs, alerts, activeCount, loading: false, error: null })
+        .map(r => ({ ...r, resolved: !!r.resolved_at || resolvedBy.has(r.uuid) }))
+      setRaw({ briefs, rows: alertRows, loading: false, error: null })
     }
     load()
     const id = setInterval(load, REFRESH_MS)
@@ -117,9 +133,25 @@ export function useAlerts(): AlertsState {
       cancelled = true
       clearInterval(id)
     }
-  }, [selectedDevice, reloadKey])
+  }, [selectedDevice])
 
-  return { ...state, dismiss, undismiss }
+  const alerts: AlertRow[] = raw.rows.map(r => ({ ...r, dismissed: r.uuid in dismissedMap }))
+  const activeSince = Date.now() - ACTIVE_DAYS * 86400000
+  const activeCount = alerts.filter(
+    a => !a.resolved && !a.dismissed && (a.severity === 'warning' || a.severity === 'critical') &&
+         new Date(a.datetime_utc).getTime() >= activeSince,
+  ).length
+
+  return { briefs: raw.briefs, alerts, activeCount, loading: raw.loading, error: raw.error, dismiss, undismiss }
+}
+
+/** Unresolved, undismissed warning/critical alerts from the last week (what the Home banner counts). */
+export function activeAlerts(state: AlertsState): AlertRow[] {
+  const since = Date.now() - ACTIVE_DAYS * 86400000
+  return state.alerts.filter(
+    a => !a.resolved && !a.dismissed && (a.severity === 'warning' || a.severity === 'critical') &&
+         new Date(a.datetime_utc).getTime() >= since,
+  )
 }
 
 const TITLES: Record<string, string> = {
