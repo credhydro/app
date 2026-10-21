@@ -20,14 +20,18 @@ export interface AlertRow {
   metadata: Record<string, unknown> | null
   /** Derived: closed by resolved_at or by a later recovery row (metadata.resolves_uuid). */
   resolved: boolean
+  /** Cleared by a grower from the Alerts tab (public.alert_dismissals). */
+  dismissed: boolean
 }
 
 export interface AlertsState {
   briefs: { at: string; brief: Brief }[]
   alerts: AlertRow[]          // everything except daily briefs, newest first
-  activeCount: number         // unresolved warning/critical from the last 7 days
+  activeCount: number         // unresolved, undismissed warning/critical from the last 7 days
   loading: boolean
   error: string | null
+  dismiss: (uuids: string[]) => Promise<string | null>
+  undismiss: (uuid: string) => Promise<string | null>
 }
 
 const WINDOW_DAYS = 30
@@ -50,21 +54,42 @@ function parseMeta(raw: unknown): Record<string, unknown> | null {
  */
 export function useAlerts(): AlertsState {
   const { selectedDevice } = useAuth()
-  const [state, setState] = useState<AlertsState>({ briefs: [], alerts: [], activeCount: 0, loading: true, error: null })
+  const [state, setState] = useState<Omit<AlertsState, 'dismiss' | 'undismiss'>>({ briefs: [], alerts: [], activeCount: 0, loading: true, error: null })
+  const [reloadKey, setReloadKey] = useState(0)
+
+  async function dismiss(uuids: string[]): Promise<string | null> {
+    if (!selectedDevice || uuids.length === 0) return null
+    const { data: { user } } = await supabase.auth.getUser()
+    const rows = uuids.map(u => ({ alert_uuid: u, device_id: selectedDevice, dismissed_by: user?.id }))
+    const { error } = await supabase.from('alert_dismissals').upsert(rows, { onConflict: 'alert_uuid', ignoreDuplicates: true })
+    setReloadKey(k => k + 1)
+    return error?.message ?? null
+  }
+
+  async function undismiss(uuid: string): Promise<string | null> {
+    const { error } = await supabase.from('alert_dismissals').delete().eq('alert_uuid', uuid)
+    setReloadKey(k => k + 1)
+    return error?.message ?? null
+  }
 
   useEffect(() => {
     if (!selectedDevice) return
     let cancelled = false
     async function load() {
       const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
-      const res = await supabase
-        .from('alerts')
-        .select('uuid, datetime_utc, alert_type, severity, message, resolved_at, metadata')
-        .eq('device_id', selectedDevice)
-        .gte('datetime_utc', since)
-        .order('datetime_utc', { ascending: false })
-        .limit(300)
+      const [res, dis] = await Promise.all([
+        supabase
+          .from('alerts')
+          .select('uuid, datetime_utc, alert_type, severity, message, resolved_at, metadata')
+          .eq('device_id', selectedDevice)
+          .gte('datetime_utc', since)
+          .order('datetime_utc', { ascending: false })
+          .limit(300),
+        supabase.from('alert_dismissals').select('alert_uuid').eq('device_id', selectedDevice),
+      ])
       if (cancelled) return
+      // If the dismissals table isn't there yet, alerts still show -- nothing counts as dismissed.
+      const dismissedSet = new Set((dis.error ? [] : dis.data ?? []).map(d => d.alert_uuid as string))
       if (res.error) {
         setState(s => ({ ...s, loading: false, error: res.error.message }))
         return
@@ -78,10 +103,10 @@ export function useAlerts(): AlertsState {
         .map(r => ({ at: r.datetime_utc, brief: r.metadata!.brief as Brief }))
       const alerts: AlertRow[] = rows
         .filter(r => r.alert_type !== 'daily_brief')
-        .map(r => ({ ...r, resolved: !!r.resolved_at || resolvedBy.has(r.uuid) }))
+        .map(r => ({ ...r, resolved: !!r.resolved_at || resolvedBy.has(r.uuid), dismissed: dismissedSet.has(r.uuid) }))
       const activeSince = Date.now() - ACTIVE_DAYS * 86400000
       const activeCount = alerts.filter(
-        a => !a.resolved && (a.severity === 'warning' || a.severity === 'critical') &&
+        a => !a.resolved && !a.dismissed && (a.severity === 'warning' || a.severity === 'critical') &&
              new Date(a.datetime_utc).getTime() >= activeSince,
       ).length
       setState({ briefs, alerts, activeCount, loading: false, error: null })
@@ -92,9 +117,9 @@ export function useAlerts(): AlertsState {
       cancelled = true
       clearInterval(id)
     }
-  }, [selectedDevice])
+  }, [selectedDevice, reloadKey])
 
-  return state
+  return { ...state, dismiss, undismiss }
 }
 
 const TITLES: Record<string, string> = {
