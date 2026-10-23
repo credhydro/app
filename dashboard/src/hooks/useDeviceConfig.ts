@@ -55,6 +55,9 @@ export const SETTINGS_COMMANDS = [
   'fan_override', 'fan_auto',
 ] as const
 
+/** Commands the dashboard sends through sendSettingsCommand. */
+export type DeviceCommand = (typeof SETTINGS_COMMANDS)[number] | 'resolve_alert'
+
 export interface DeviceConfigState {
   config: DeviceConfig | null
   updatedAt: string | null
@@ -150,7 +153,7 @@ export type CommandOutcome =
  */
 export async function sendSettingsCommand(
   deviceId: string,
-  command: (typeof SETTINGS_COMMANDS)[number],
+  command: DeviceCommand,
   params: Record<string, unknown>,
   trialName: string | null,
   onUpdate: (o: CommandOutcome) => void,

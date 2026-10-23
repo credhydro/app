@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAlerts, alertTitle, TAB_LINKS, type AlertRow } from '../hooks/useAlerts'
+import { useAlerts, alertTitle, causeLabel, TAB_LINKS, type AlertRow } from '../hooks/useAlerts'
+import { ResolveAlertForm } from '../components/ResolveAlertForm'
 
 type Filter = 'attention' | 'all'
 
@@ -9,7 +10,7 @@ function fmt(iso: string): string {
 }
 
 export function AlertsPage() {
-  const { alerts, briefs, loading, error, dismiss, undismiss } = useAlerts()
+  const { alerts, briefs, loading, error, dismiss, undismiss, refresh } = useAlerts()
   const [filter, setFilter] = useState<Filter>('attention')
   const [showDismissed, setShowDismissed] = useState(false)
   const [allBriefs, setAllBriefs] = useState(false)
@@ -70,6 +71,7 @@ export function AlertsPage() {
                 a={a}
                 onDismiss={() => dismiss([a.uuid])}
                 onUndo={() => undismiss(a.uuid)}
+                onSaved={refresh}
               />
             ))}
           </ul>
@@ -125,11 +127,14 @@ export function AlertsPage() {
   )
 }
 
-function AlertItem({ a, onDismiss, onUndo }: {
+function AlertItem({ a, onDismiss, onUndo, onSaved }: {
   a: AlertRow
   onDismiss: () => void
   onUndo: () => void
+  onSaved: () => void
 }) {
+  const [editing, setEditing] = useState(false)
+  const canExplain = a.severity === 'warning' || a.severity === 'critical'
   const faded = a.resolved || a.superseded
   const dot =
     faded ? 'bg-gray-300'
@@ -147,7 +152,32 @@ function AlertItem({ a, onDismiss, onUndo }: {
           {!a.resolved && a.superseded && <span className="text-xs text-gray-400">Earlier brief</span>}
         </div>
         <p className={`text-sm ${faded ? 'text-gray-400' : 'text-gray-600'}`}>{a.message}</p>
-        <span className="text-xs text-gray-400">{fmt(a.datetime_utc)}</span>
+        {a.resolution && !editing && (
+          <div className="mt-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-sm text-emerald-900">
+            <span className="font-medium">What it was: </span>
+            {a.resolution.causes.map(causeLabel).join(', ')}
+            {a.resolution.note && <> — {a.resolution.note}</>}
+            {a.resolution.action_taken && <span className="block text-xs text-emerald-800">Did: {a.resolution.action_taken}</span>}
+          </div>
+        )}
+        <div className="flex flex-wrap items-baseline gap-x-3">
+          <span className="text-xs text-gray-400">{fmt(a.datetime_utc)}</span>
+          {canExplain && !editing && (
+            <button onClick={() => setEditing(true)} className="text-xs font-medium text-emerald-700 hover:underline">
+              {a.resolution ? 'Edit note' : 'What was it?'}
+            </button>
+          )}
+        </div>
+        {editing && (
+          <ResolveAlertForm
+            alert={a}
+            onCancel={() => setEditing(false)}
+            onDone={() => {
+              setEditing(false)
+              onSaved()
+            }}
+          />
+        )}
       </div>
       <button
         onClick={a.dismissed ? onUndo : onDismiss}

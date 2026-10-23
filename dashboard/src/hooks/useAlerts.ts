@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -10,6 +10,33 @@ export interface Brief {
   based_on?: string[]
 }
 
+/** Same keys as the unit's cause list. */
+export const CAUSES: { key: string; label: string }[] = [
+  { key: 'empty_dosing_reservoir', label: 'pH up/down reservoir empty' },
+  { key: 'low_main_reservoir', label: 'Main reservoir low' },
+  { key: 'blocked_line', label: 'Blocked or kinked line' },
+  { key: 'probe_issue', label: 'Probe dry, dirty or needs calibration' },
+  { key: 'equipment_failure', label: 'Equipment failure' },
+  { key: 'power_or_network', label: 'Power or network outage' },
+  { key: 'grower_action', label: 'Something I did (top-off, nutrient change)' },
+  { key: 'environment', label: 'Environment (weather, HVAC)' },
+  { key: 'false_alarm', label: 'False alarm' },
+  { key: 'other', label: 'Other' },
+]
+export const MAX_CAUSES = 4
+
+export function causeLabel(key: string): string {
+  return CAUSES.find(c => c.key === key)?.label ?? key
+}
+
+/** The grower's "What was it?" note on an alert. */
+export interface Resolution {
+  causes: string[]
+  note: string | null
+  action_taken: string | null
+  datetime_utc: string
+}
+
 export interface AlertRow {
   uuid: string
   datetime_utc: string
@@ -18,8 +45,10 @@ export interface AlertRow {
   message: string
   resolved_at: string | null
   metadata: Record<string, unknown> | null
-  /** Derived: closed by resolved_at or by a later recovery row (metadata.resolves_uuid). */
+  /** Derived: closed by resolved_at, a later recovery row (metadata.resolves_uuid), or a grower note. */
   resolved: boolean
+  /** What the grower said caused it, if they've told us. */
+  resolution: Resolution | null
   /** Hidden by the grower in this browser (localStorage only -- never saved anywhere). */
   dismissed: boolean
   /** Derived: a daily-brief finding from an earlier brief. Each morning's brief replaces the last one's findings. */
@@ -34,6 +63,8 @@ export interface AlertsState {
   error: string | null
   dismiss: (uuids: string[]) => void
   undismiss: (uuid: string) => void
+  /** Re-fetch now (e.g. right after saving a note). */
+  refresh: () => void
 }
 
 // ---- in-browser dismissals ---------------------------------------------------
@@ -100,22 +131,47 @@ export function useAlerts(): AlertsState {
     setDismissedMap(next)
   }
 
+  const [tick, setTick] = useState(0)
+  const refresh = useCallback(() => setTick(t => t + 1), [])
+
   useEffect(() => {
     if (!selectedDevice) return
     let cancelled = false
     async function load() {
       const since = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString()
-      const res = await supabase
-        .from('alerts')
-        .select('uuid, datetime_utc, alert_type, severity, message, resolved_at, metadata')
-        .eq('device_id', selectedDevice)
-        .gte('datetime_utc', since)
-        .order('datetime_utc', { ascending: false })
-        .limit(300)
+      const [res, resRes] = await Promise.all([
+        supabase
+          .from('alerts')
+          .select('uuid, datetime_utc, alert_type, severity, message, resolved_at, metadata')
+          .eq('device_id', selectedDevice)
+          .gte('datetime_utc', since)
+          .order('datetime_utc', { ascending: false })
+          .limit(300),
+        supabase
+          .from('alert_resolutions')
+          .select('alert_uuid, causes, note, action_taken, datetime_utc')
+          .eq('device_id', selectedDevice)
+          .gte('alert_datetime_utc', since)
+          .limit(300),
+      ])
       if (cancelled) return
       if (res.error) {
         setRaw(s => ({ ...s, loading: false, error: res.error.message }))
         return
+      }
+      // A missing alert_resolutions table (SQL not applied yet) just means no notes.
+      const resolutions = new Map<string, Resolution>()
+      for (const r of resRes.error ? [] : resRes.data ?? []) {
+        let causes: string[] = []
+        try {
+          const parsed = typeof r.causes === 'string' ? JSON.parse(r.causes) : r.causes
+          if (Array.isArray(parsed)) causes = parsed.map(String)
+        } catch {
+          // leave empty
+        }
+        resolutions.set(String(r.alert_uuid), {
+          causes, note: r.note ?? null, action_taken: r.action_taken ?? null, datetime_utc: r.datetime_utc,
+        })
       }
       const rows = (res.data ?? []).map(r => ({ ...r, metadata: parseMeta(r.metadata) }))
       const resolvedBy = new Set(
@@ -132,7 +188,8 @@ export function useAlerts(): AlertsState {
         .filter(r => r.alert_type !== 'daily_brief')
         .map(r => ({
           ...r,
-          resolved: !!r.resolved_at || resolvedBy.has(r.uuid),
+          resolution: resolutions.get(r.uuid) ?? null,
+          resolved: !!r.resolved_at || resolvedBy.has(r.uuid) || resolutions.has(r.uuid),
           superseded: r.metadata?.source === 'agent_daily_check' && latestBriefMs !== null &&
                       new Date(r.datetime_utc).getTime() < latestBriefMs,
         }))
@@ -144,7 +201,7 @@ export function useAlerts(): AlertsState {
       cancelled = true
       clearInterval(id)
     }
-  }, [selectedDevice])
+  }, [selectedDevice, tick])
 
   const alerts: AlertRow[] = raw.rows.map(r => ({ ...r, dismissed: r.uuid in dismissedMap }))
   const activeSince = Date.now() - ACTIVE_DAYS * 86400000
@@ -153,7 +210,7 @@ export function useAlerts(): AlertsState {
          new Date(a.datetime_utc).getTime() >= activeSince,
   ).length
 
-  return { briefs: raw.briefs, alerts, activeCount, loading: raw.loading, error: raw.error, dismiss, undismiss }
+  return { briefs: raw.briefs, alerts, activeCount, loading: raw.loading, error: raw.error, dismiss, undismiss, refresh }
 }
 
 /** Unresolved, undismissed, current warning/critical alerts from the last week (what the Home banner counts). */
@@ -173,8 +230,11 @@ const TITLES: Record<string, string> = {
 export function alertTitle(alertType: string): string {
   if (TITLES[alertType]) return TITLES[alertType]
   const ACRONYMS: Record<string, string> = { vpd: 'VPD', ph: 'pH', ec: 'EC', dli: 'DLI', ppfd: 'PPFD', nft: 'NFT', dwc: 'DWC', swc: 'SWC' }
-  const words = alertType.split('_').filter(Boolean).map(w => ACRONYMS[w.toLowerCase()] ?? w.toLowerCase())
+  const parts = alertType.split('_').filter(Boolean)
+  const words = parts.map(w => ACRONYMS[w.toLowerCase()] ?? w.toLowerCase())
   const text = words.join(' ')
+  // Don't turn a leading acronym like "pH" into "PH".
+  if (parts.length && ACRONYMS[parts[0].toLowerCase()]) return text
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
