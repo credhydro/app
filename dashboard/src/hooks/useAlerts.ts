@@ -22,6 +22,8 @@ export interface AlertRow {
   resolved: boolean
   /** Hidden by the grower in this browser (localStorage only -- never saved anywhere). */
   dismissed: boolean
+  /** Derived: a daily-brief finding from an earlier brief. Each morning's brief replaces the last one's findings. */
+  superseded: boolean
 }
 
 export interface AlertsState {
@@ -122,9 +124,18 @@ export function useAlerts(): AlertsState {
       const briefs = rows
         .filter(r => r.alert_type === 'daily_brief' && r.metadata?.brief)
         .map(r => ({ at: r.datetime_utc, brief: r.metadata!.brief as Brief }))
+      // Findings from the daily brief only stand until the next brief. A finding is
+      // written with the same timestamp as its brief, so anything older than the
+      // latest brief belongs to an earlier one.
+      const latestBriefMs = briefs.length ? new Date(briefs[0].at).getTime() : null
       const alertRows = rows
         .filter(r => r.alert_type !== 'daily_brief')
-        .map(r => ({ ...r, resolved: !!r.resolved_at || resolvedBy.has(r.uuid) }))
+        .map(r => ({
+          ...r,
+          resolved: !!r.resolved_at || resolvedBy.has(r.uuid),
+          superseded: r.metadata?.source === 'agent_daily_check' && latestBriefMs !== null &&
+                      new Date(r.datetime_utc).getTime() < latestBriefMs,
+        }))
       setRaw({ briefs, rows: alertRows, loading: false, error: null })
     }
     load()
@@ -138,18 +149,18 @@ export function useAlerts(): AlertsState {
   const alerts: AlertRow[] = raw.rows.map(r => ({ ...r, dismissed: r.uuid in dismissedMap }))
   const activeSince = Date.now() - ACTIVE_DAYS * 86400000
   const activeCount = alerts.filter(
-    a => !a.resolved && !a.dismissed && (a.severity === 'warning' || a.severity === 'critical') &&
+    a => !a.resolved && !a.dismissed && !a.superseded && (a.severity === 'warning' || a.severity === 'critical') &&
          new Date(a.datetime_utc).getTime() >= activeSince,
   ).length
 
   return { briefs: raw.briefs, alerts, activeCount, loading: raw.loading, error: raw.error, dismiss, undismiss }
 }
 
-/** Unresolved, undismissed warning/critical alerts from the last week (what the Home banner counts). */
+/** Unresolved, undismissed, current warning/critical alerts from the last week (what the Home banner counts). */
 export function activeAlerts(state: AlertsState): AlertRow[] {
   const since = Date.now() - ACTIVE_DAYS * 86400000
   return state.alerts.filter(
-    a => !a.resolved && !a.dismissed && (a.severity === 'warning' || a.severity === 'critical') &&
+    a => !a.resolved && !a.dismissed && !a.superseded && (a.severity === 'warning' || a.severity === 'critical') &&
          new Date(a.datetime_utc).getTime() >= since,
   )
 }

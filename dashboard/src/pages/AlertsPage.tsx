@@ -15,7 +15,10 @@ export function AlertsPage() {
   const [allBriefs, setAllBriefs] = useState(false)
   const briefsShown = allBriefs ? briefs : briefs.slice(0, 5)
 
-  const inFilter = filter === 'all' ? alerts : alerts.filter(a => a.severity === 'warning' || a.severity === 'critical')
+  // "Needs attention" leaves out findings from earlier briefs -- today's brief replaced them.
+  const inFilter = filter === 'all'
+    ? alerts
+    : alerts.filter(a => !a.superseded && (a.severity === 'warning' || a.severity === 'critical'))
   const open = inFilter.filter(a => !a.dismissed)
   const dismissed = inFilter.filter(a => a.dismissed)
   const shown = showDismissed ? dismissed : open
@@ -127,8 +130,9 @@ function AlertItem({ a, onDismiss, onUndo }: {
   onDismiss: () => void
   onUndo: () => void
 }) {
+  const faded = a.resolved || a.superseded
   const dot =
-    a.resolved ? 'bg-gray-300'
+    faded ? 'bg-gray-300'
     : a.severity === 'critical' ? 'bg-red-500'
     : a.severity === 'warning' ? 'bg-amber-400'
     : 'bg-emerald-400'
@@ -137,11 +141,12 @@ function AlertItem({ a, onDismiss, onUndo }: {
       <span className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${dot}`} />
       <div className="flex flex-col gap-0.5 min-w-0">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className={`text-sm font-medium ${a.resolved ? 'text-gray-500' : 'text-gray-800'}`}>{alertTitle(a.alert_type)}</span>
-          {a.severity === 'critical' && !a.resolved && <span className="text-xs font-semibold text-red-600 uppercase">Critical</span>}
+          <span className={`text-sm font-medium ${faded ? 'text-gray-500' : 'text-gray-800'}`}>{alertTitle(a.alert_type)}</span>
+          {a.severity === 'critical' && !faded && <span className="text-xs font-semibold text-red-600 uppercase">Critical</span>}
           {a.resolved && <span className="text-xs text-gray-400">Resolved</span>}
+          {!a.resolved && a.superseded && <span className="text-xs text-gray-400">Earlier brief</span>}
         </div>
-        <p className={`text-sm ${a.resolved ? 'text-gray-400' : 'text-gray-600'}`}>{a.message}</p>
+        <p className={`text-sm ${faded ? 'text-gray-400' : 'text-gray-600'}`}>{a.message}</p>
         <span className="text-xs text-gray-400">{fmt(a.datetime_utc)}</span>
       </div>
       <button
