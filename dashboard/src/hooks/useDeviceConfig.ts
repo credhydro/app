@@ -56,7 +56,10 @@ export const SETTINGS_COMMANDS = [
 ] as const
 
 /** Commands the dashboard sends through sendSettingsCommand. */
-export type DeviceCommand = (typeof SETTINGS_COMMANDS)[number] | 'resolve_alert'
+export type DeviceCommand =
+  | (typeof SETTINGS_COMMANDS)[number]
+  | 'resolve_alert'
+  | 'sensor_probe_out' | 'sensor_probe_in' | 'sensor_check' | 'apply_sensor_offset' | 'clear_sensor_offset'
 
 export interface DeviceConfigState {
   config: DeviceConfig | null

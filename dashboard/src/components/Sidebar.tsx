@@ -27,6 +27,7 @@ export function Sidebar() {
         <NavItem label="Pump" icon={PumpIcon} to="/pump" active={location.pathname === '/pump'} />
         <NavItem label="Fans" icon={FanIcon} to="/fans" active={location.pathname === '/fans'} />
         <NavItem label="Growth Photos" icon={PhotoIcon} to="/growth-photos" active={location.pathname === '/growth-photos'} />
+        <NavItem label="Sensors" icon={SensorIcon} to="/sensors" active={location.pathname === '/sensors'} />
         <NavItem label="Settings" icon={SettingsIcon} to="/settings" active={location.pathname === '/settings'} />
       </nav>
 
@@ -69,6 +70,15 @@ function NavItem({
       <Icon />
       {label}
     </Link>
+  )
+}
+
+export function SensorIcon(): React.ReactElement {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
+      <path d="M8 2.5h4M9 2.5v8.2a3.5 3.5 0 102 0V2.5" />
+      <path d="M3 6.5a7 7 0 000 7M17 6.5a7 7 0 010 7" />
+    </svg>
   )
 }
 

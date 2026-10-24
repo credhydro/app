@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 export interface Brief {
   summary: string
   worth_a_look?: string | null
-  worth_a_look_tab?: 'lights' | 'ph' | 'pump' | 'fans' | 'photos' | 'settings' | null
+  worth_a_look_tab?: 'lights' | 'ph' | 'pump' | 'fans' | 'photos' | 'sensors' | 'settings' | null
   growth?: string | null
   based_on?: string[]
 }
@@ -244,5 +244,6 @@ export const TAB_LINKS: Record<string, { to: string; label: string }> = {
   pump: { to: '/pump', label: 'Pump' },
   fans: { to: '/fans', label: 'Fans' },
   photos: { to: '/growth-photos', label: 'Growth Photos' },
+  sensors: { to: '/sensors', label: 'Sensors' },
   settings: { to: '/settings', label: 'Settings' },
 }
