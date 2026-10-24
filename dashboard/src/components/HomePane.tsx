@@ -5,6 +5,7 @@ import { useLightSource, dliDescription } from '../hooks/useLightSource'
 import { useAlerts } from '../hooks/useAlerts'
 import { DailyBriefCard } from './DailyBriefCard'
 import { TimelineChart } from './TimelineChart'
+import { GrowthCard } from './GrowthCard'
 
 export function HomePane() {
   const { latest, dli, assimilation, totalCost, loading, error } = useAmbientData()
@@ -54,6 +55,10 @@ export function HomePane() {
 
       <div className="max-w-3xl">
         <DailyBriefCard alerts={alerts} />
+      </div>
+
+      <div className="max-w-3xl">
+        <GrowthCard />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
