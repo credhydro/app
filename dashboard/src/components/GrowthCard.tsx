@@ -13,7 +13,8 @@ const PAD_B = 26
 const PLOT_H = VB_H - PAD_T - PAD_B
 const LINE = '#059669'          // emerald-600 -- the app's accent
 const BAND = '#10b981'          // emerald-500 at low opacity
-const PHOTO_DUE_DAYS = 3        // two photos a week
+const PHOTO_DUE_DAYS = 3        // two photos a week: due 3 days after the last one
+const PHOTO_EVERY_DAYS = 3.5    // ... aiming for every 3-4 days
 
 function fmtDay(t: number): string {
   return new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' })
@@ -29,16 +30,13 @@ export function GrowthCard() {
   const photos = points.filter(p => !p.anchor)
   const daysSince = photos.length ? (Date.now() - photos[photos.length - 1].t) / 86400000 : null
   const photoDue = daysSince === null || daysSince >= PHOTO_DUE_DAYS
+  const nextBy = photos.length ? new Date(photos[photos.length - 1].t + PHOTO_EVERY_DAYS * 86400000) : null
 
   return (
     <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Plant growth</h2>
-        {daysSince !== null && (
-          <span className="text-xs text-gray-400">
-            Last photo {daysSince < 1 ? 'today' : `${Math.round(daysSince)} day${Math.round(daysSince) === 1 ? '' : 's'} ago`}
-          </span>
-        )}
+        {!loading && <PhotoStatus daysSince={daysSince} due={photoDue} nextBy={nextBy} />}
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
@@ -62,13 +60,26 @@ export function GrowthCard() {
         </div>
       )}
 
-      {!loading && photoDue && photos.length > 0 && (
-        <p className="text-sm text-emerald-800">
-          Time for a growth photo — two a week keeps the growth rate accurate.{' '}
-          <Link to="/growth-photos" className="font-medium hover:underline">Growth Photos →</Link>
-        </p>
-      )}
     </section>
+  )
+}
+
+/** Always-visible photo cadence: when the next photo is due, or that it is due now. */
+function PhotoStatus({ daysSince, due, nextBy }: { daysSince: number | null; due: boolean; nextBy: Date | null }) {
+  const ago = daysSince === null ? null
+    : daysSince < 1 ? 'today' : `${Math.round(daysSince)} day${Math.round(daysSince) === 1 ? '' : 's'} ago`
+  if (due) {
+    return (
+      <Link to="/growth-photos"
+        className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-100">
+        <span aria-hidden>●</span> Photo due{ago && ` · last ${ago}`} — take one →
+      </Link>
+    )
+  }
+  return (
+    <span className="text-xs text-gray-400">
+      Last photo {ago}{nextBy && ` · next by ${nextBy.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}`}
+    </span>
   )
 }
 
