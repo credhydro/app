@@ -25,8 +25,9 @@ function niceMax(v: number): number {
 }
 
 export function GrowthCard() {
-  const { points, intervals, loading, error } = useGrowthSeries()
-  const daysSince = points.length ? (Date.now() - points[points.length - 1].t) / 86400000 : null
+  const { points, intervals, transplant, loading, error } = useGrowthSeries()
+  const photos = points.filter(p => !p.anchor)
+  const daysSince = photos.length ? (Date.now() - photos[photos.length - 1].t) / 86400000 : null
   const photoDue = daysSince === null || daysSince >= PHOTO_DUE_DAYS
 
   return (
@@ -43,23 +44,24 @@ export function GrowthCard() {
       {error && <p className="text-sm text-red-500">{error}</p>}
       {loading ? (
         <p className="text-sm text-gray-400">Loading…</p>
-      ) : points.length === 0 ? (
+      ) : photos.length === 0 ? (
         <p className="text-sm text-gray-500">
           No growth photos yet for this grow. <Link to="/growth-photos" className="text-emerald-700 hover:underline">Take the first one →</Link>
         </p>
       ) : (
         <div className="grid gap-4 md:grid-cols-[1fr,180px]">
           <div className="flex flex-col gap-1.5 min-w-0">
-            <Chart points={points} />
+            <Chart points={points} transplant={transplant} />
             <p className="text-xs text-gray-400">
               Line: average plant, canopy area seen from above (cm²). Shaded: smallest to largest plant.
+              {points[0]?.anchor && ' Hollow point: transplant day, taken as zero.'}
             </p>
           </div>
-          <RateTile intervals={intervals} points={points} />
+          <RateTile intervals={intervals} points={photos} />
         </div>
       )}
 
-      {!loading && photoDue && points.length > 0 && (
+      {!loading && photoDue && photos.length > 0 && (
         <p className="text-sm text-emerald-800">
           Time for a growth photo — two a week keeps the growth rate accurate.{' '}
           <Link to="/growth-photos" className="font-medium hover:underline">Growth Photos →</Link>
@@ -115,7 +117,7 @@ function useWidth<T extends HTMLElement>() {
   return [ref, w] as const
 }
 
-function Chart({ points }: { points: GrowthPoint[] }) {
+function Chart({ points, transplant }: { points: GrowthPoint[]; transplant: number | null }) {
   const [hover, setHover] = useState<number | null>(null)
   const [wrapRef, VB_W] = useWidth<HTMLDivElement>()
   const PLOT_W = VB_W - PAD_L - PAD_R
@@ -162,7 +164,9 @@ function Chart({ points }: { points: GrowthPoint[] }) {
         {points.length > 1 && <path d={band} fill={BAND} fillOpacity={0.14} />}
         {points.length > 1 && <path d={line} fill="none" stroke={LINE} strokeWidth={2} strokeLinejoin="round" />}
         {h && <line x1={x(h.t)} x2={x(h.t)} y1={PAD_T} y2={PAD_T + PLOT_H} stroke="#d1d5db" strokeWidth={1} />}
-        {points.map((p, i) => (
+        {points.map((p, i) => p.anchor ? (
+          <circle key={p.t} cx={x(p.t)} cy={y(p.mean)} r={hover === i ? 6 : 4.5} fill="#fff" stroke={LINE} strokeWidth={2} />
+        ) : (
           <circle key={p.t} cx={x(p.t)} cy={y(p.mean)} r={hover === i ? 6 : 4.5} fill={LINE} stroke="#fff" strokeWidth={2} />
         ))}
         {labelIdx.map(i => {
@@ -187,9 +191,21 @@ function Chart({ points }: { points: GrowthPoint[] }) {
             ? { left: x(h.t) + 12, top: Math.max(0, y(h.mean) - 70) }
             : { right: VB_W - x(h.t) + 12, top: Math.max(0, y(h.mean) - 70) }}
         >
-          <div className="font-medium text-gray-700">{fmtDay(h.t)}</div>
-          <div className="text-gray-600">Average {h.mean.toFixed(0)} cm²</div>
-          <div className="text-gray-500">Range {h.min.toFixed(0)}–{h.max.toFixed(0)} cm² · {h.n} plants</div>
+          {h.anchor ? (
+            <>
+              <div className="font-medium text-gray-700">{fmtDay(h.t)} · transplanted</div>
+              <div className="text-gray-500">Growth taken to start at 0</div>
+            </>
+          ) : (
+            <>
+              <div className="font-medium text-gray-700">
+                {fmtDay(h.t)}
+                {transplant !== null && h.t > transplant && <span className="font-normal text-gray-400"> · day {Math.floor((h.t - transplant) / 86400000)}</span>}
+              </div>
+              <div className="text-gray-600">Average {h.mean.toFixed(0)} cm²</div>
+              <div className="text-gray-500">Range {h.min.toFixed(0)}–{h.max.toFixed(0)} cm² · {h.n} plants</div>
+            </>
+          )}
         </div>
       )}
     </div>

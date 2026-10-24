@@ -10,6 +10,8 @@ export interface GrowthPoint {
   min: number          // smallest plant
   max: number          // largest plant
   n: number            // plants measured
+  /** The transplant-day zero point (not a photo): growth assumed to start at 0. */
+  anchor?: boolean
 }
 
 /** Relative growth rate of the AVERAGE plant between two sessions. */
@@ -26,6 +28,7 @@ const MIN_DAYS_FOR_RATE = 0.5
 export function useGrowthSeries() {
   const { selectedDevice, selectedTrial } = useAuth()
   const [points, setPoints] = useState<GrowthPoint[]>([])
+  const [transplant, setTransplant] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,7 +53,24 @@ export function useGrowthSeries() {
         return
       }
       setError(null)
-      setPoints(toSessions((res.data ?? []).map(r => r.result as PhotoResult | null)))
+      const rows = res.data ?? []
+      setPoints(toSessions(rows.map(r => r.result as PhotoResult | null)))
+
+      // Transplant day = the trial's planting_date: growth is taken to start at 0 there.
+      const trial = selectedTrial ?? (rows.length ? rows[rows.length - 1].trial_name : null)
+      let planted: number | null = null
+      if (trial) {
+        const t = await supabase
+          .from('trials')
+          .select('planting_date')
+          .eq('trial_name', trial)
+          .eq('device_id', selectedDevice)
+          .maybeSingle()
+        const d = t.data?.planting_date as string | undefined
+        if (d) planted = new Date(`${d.slice(0, 10)}T00:00:00`).getTime()
+      }
+      if (cancelled) return
+      setTransplant(Number.isFinite(planted) ? planted : null)
       setLoading(false)
     }
     load()
@@ -61,7 +81,13 @@ export function useGrowthSeries() {
     }
   }, [selectedDevice, selectedTrial])
 
-  return { points, intervals: toIntervals(points), loading, error }
+  // Prepend the zero point only when it is before the first photo (a later date means a data problem).
+  const withAnchor: GrowthPoint[] =
+    transplant !== null && points.length && transplant < points[0].t
+      ? [{ t: transplant, mean: 0, min: 0, max: 0, n: 0, anchor: true }, ...points]
+      : points
+  // Rates are photo-to-photo only: a rate from zero is infinite.
+  return { points: withAnchor, intervals: toIntervals(points), transplant, loading, error }
 }
 
 /** Group photos taken close together (a retake, two angles) and average each plant across them. */
