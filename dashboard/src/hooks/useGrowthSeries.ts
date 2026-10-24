@@ -24,6 +24,7 @@ export interface GrowthInterval {
 
 const SAME_SESSION_HOURS = 12
 const MIN_DAYS_FOR_RATE = 0.5
+const MAX_ANCHOR_GAP_DAYS = 30
 
 export function useGrowthSeries() {
   const { selectedDevice, selectedTrial } = useAuth()
@@ -81,13 +82,18 @@ export function useGrowthSeries() {
     }
   }, [selectedDevice, selectedTrial])
 
-  // Prepend the zero point only when it is before the first photo (a later date means a data problem).
-  const withAnchor: GrowthPoint[] =
-    transplant !== null && points.length && transplant < points[0].t
-      ? [{ t: transplant, mean: 0, min: 0, max: 0, n: 0, anchor: true }, ...points]
-      : points
+  // Draw the zero point only when it is plausible: before the first photo and not
+  // more than MAX_ANCHOR_GAP_DAYS earlier (e.g. a trial name reused for a new crop
+  // keeps the old planting date). Otherwise flag it instead of squashing the chart.
+  const gapDays = transplant !== null && points.length ? (points[0].t - transplant) / 86400000 : null
+  const anchorOk = gapDays !== null && gapDays > 0 && gapDays <= MAX_ANCHOR_GAP_DAYS
+  const withAnchor: GrowthPoint[] = anchorOk
+    ? [{ t: transplant as number, mean: 0, min: 0, max: 0, n: 0, anchor: true }, ...points]
+    : points
+  const transplantIssue = gapDays !== null && !anchorOk ? transplant : null
   // Rates are photo-to-photo only: a rate from zero is infinite.
-  return { points: withAnchor, intervals: toIntervals(points), transplant, loading, error }
+  return { points: withAnchor, intervals: toIntervals(points), transplant: anchorOk ? transplant : null,
+           transplantIssue, loading, error }
 }
 
 /** Group photos taken close together (a retake, two angles) and average each plant across them. */

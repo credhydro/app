@@ -25,7 +25,7 @@ function niceMax(v: number): number {
 }
 
 export function GrowthCard() {
-  const { points, intervals, transplant, loading, error } = useGrowthSeries()
+  const { points, intervals, transplant, transplantIssue, loading, error } = useGrowthSeries()
   const photos = points.filter(p => !p.anchor)
   const daysSince = photos.length ? (Date.now() - photos[photos.length - 1].t) / 86400000 : null
   const photoDue = daysSince === null || daysSince >= PHOTO_DUE_DAYS
@@ -55,6 +55,7 @@ export function GrowthCard() {
             <p className="text-xs text-gray-400">
               Line: average plant, canopy area seen from above (cm²). Shaded: smallest to largest plant.
               {points[0]?.anchor && ' Hollow point: transplant day, taken as zero.'}
+              {transplantIssue !== null && ` The trial's planting date (${fmtDay(transplantIssue)}) doesn't match these photos, so the chart starts at the first photo.`}
             </p>
           </div>
           <RateTile intervals={intervals} points={photos} />
