@@ -12,6 +12,8 @@ import { SensorsPage } from './pages/SensorsPage'
 import { PumpPage } from './pages/PumpPage'
 import { FansPage } from './pages/FansPage'
 import { AlertsPage } from './pages/AlertsPage'
+import { HarvestPage } from './pages/HarvestPage'
+import { StartGrowPage } from './pages/StartGrowPage'
 
 function DashboardLayout() {
   return (
@@ -64,6 +66,8 @@ export default function App() {
             <Route path="growth-photos" element={<GrowthPhotosPage />} />
             <Route path="sensors" element={<SensorsPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="harvest" element={<HarvestPage />} />
+            <Route path="start-grow" element={<StartGrowPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

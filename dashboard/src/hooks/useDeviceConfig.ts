@@ -60,6 +60,7 @@ export type DeviceCommand =
   | (typeof SETTINGS_COMMANDS)[number]
   | 'resolve_alert'
   | 'sensor_probe_out' | 'sensor_probe_in' | 'sensor_check' | 'apply_sensor_offset' | 'clear_sensor_offset'
+  | 'register_harvest' | 'start_grow'
 
 export interface DeviceConfigState {
   config: DeviceConfig | null

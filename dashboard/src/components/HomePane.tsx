@@ -6,9 +6,12 @@ import { useAlerts } from '../hooks/useAlerts'
 import { DailyBriefCard } from './DailyBriefCard'
 import { TimelineChart } from './TimelineChart'
 import { GrowthCard } from './GrowthCard'
+import { GrowCard } from './GrowCard'
+import { useAuth } from '../context/AuthContext'
 
 export function HomePane() {
   const { latest, dli, assimilation, totalCost, loading, error } = useAmbientData()
+  const { profile } = useAuth()
   const { targetPh, phMaxDelta } = usePhTargetStatus()
   const lightSource = useLightSource()
   const alerts = useAlerts()
@@ -56,6 +59,12 @@ export function HomePane() {
       <div className="max-w-3xl">
         <DailyBriefCard alerts={alerts} />
       </div>
+
+      {profile?.is_admin && (
+        <div className="max-w-3xl">
+          <GrowCard />
+        </div>
+      )}
 
       <div className="max-w-3xl">
         <GrowthCard />
