@@ -16,21 +16,31 @@ interface CheckResult {
   too_far_off: boolean
 }
 
-const COPY: Record<Sensor, { title: string; need: string; dip: string; reference: string; refLabel: string }> = {
+const COPY: Record<Sensor, { title: string; need: string; tip: string }> = {
   ph: {
     title: '2-minute pH check',
-    need: 'pH 7.00 buffer, a cup of distilled or clean water for rinsing, and a paper towel.',
-    dip: 'Rinse the pH probe, blot it (don’t wipe the tip), and stand it in the pH 7.00 buffer. Wait about 30 seconds, then tap Read.',
-    reference: 'ph7',
-    refLabel: 'pH 7.00 buffer',
+    need: 'pH 7.00 buffer (pH 4.00 too, if you have it), a cup of distilled or clean water for rinsing, and a paper towel.',
+    tip: 'Got pH 4.00 too? Read it first, then pH 7.00 — the correction is set from the pH 7.00 reading, and seeing both shows how the error changes with pH.',
   },
   ec: {
     title: 'EC probe check',
     need: '1413 µS/cm conductivity standard, rinse water and a paper towel.',
-    dip: 'Rinse the EC probe, shake it and blot it dry, then stand it in the 1413 standard. Tap the probe gently to knock off air bubbles, then tap Read.',
-    reference: 'ec1413',
-    refLabel: '1413 µS/cm standard',
+    tip: 'After the 1413 standard you can also read the probe dry, in air — it should read close to zero.',
   },
+}
+
+// References the unit accepts (app/sensor_handlers.py REFERENCES), most useful first.
+const REFS: Record<Sensor, { key: string; label: string; dip: string }[]> = {
+  ph: [
+    { key: 'ph7', label: 'pH 7.00 buffer', dip: 'Rinse the pH probe, blot it (don’t wipe the tip), and stand it in the pH 7.00 buffer. Wait about 30 seconds, then tap Read.' },
+    { key: 'ph4', label: 'pH 4.00 buffer', dip: 'Rinse the pH probe, blot it (don’t wipe the tip), and stand it in the pH 4.00 buffer. Give it a minute -- this probe is slow in acid — then tap Read.' },
+    { key: 'ph10', label: 'pH 10.00 buffer', dip: 'Rinse the pH probe, blot it, and stand it in the pH 10.00 buffer. Wait about 30 seconds, then tap Read.' },
+  ],
+  ec: [
+    { key: 'ec1413', label: '1413 µS/cm standard', dip: 'Rinse the EC probe, shake it and blot it dry, then stand it in the 1413 standard. Tap the probe gently to knock off air bubbles, then tap Read.' },
+    { key: 'dry', label: 'Dry (in air)', dip: 'Rinse the EC probe, shake it and blot it completely dry, and hold it in the air. Then tap Read.' },
+    { key: 'ec84', label: '84 µS/cm standard', dip: 'Rinse the EC probe, shake it and blot it dry, then stand it in the 84 standard. Tap off bubbles, then tap Read.' },
+  ],
 }
 
 function fmtErr(r: CheckResult, sensor: Sensor): string {
@@ -41,6 +51,9 @@ function fmtErr(r: CheckResult, sensor: Sensor): string {
 export function SensorCheckWizard({ sensor, onClose }: { sensor: Sensor; onClose: () => void }) {
   const { selectedDevice, selectedTrial } = useAuth()
   const copy = COPY[sensor]
+  const [refKey, setRefKey] = useState(REFS[sensor][0].key)
+  const ref = REFS[sensor].find(r => r.key === refKey) ?? REFS[sensor][0]
+  const [done, setDone] = useState<string[]>([])           // references read this session
   const [step, setStep] = useState<Step>('intro')
   const [result, setResult] = useState<CheckResult | null>(null)
   const [applied, setApplied] = useState<number | null>(null)
@@ -68,8 +81,9 @@ export function SensorCheckWizard({ sensor, onClose }: { sensor: Sensor; onClose
   function read() {
     setResult(null)
     setStep('reading')
-    send('sensor_check', { sensor, reference: copy.reference }, r => {
+    send('sensor_check', { sensor, reference: ref.key }, r => {
       setResult(r as unknown as CheckResult)
+      setDone(d => (d.includes(ref.key) ? d : [...d, ref.key]))
       setStep('result')
     })
   }
@@ -98,6 +112,7 @@ export function SensorCheckWizard({ sensor, onClose }: { sensor: Sensor; onClose
       {step === 'intro' && (
         <>
           <p className="text-sm text-gray-600"><span className="font-medium">You’ll need:</span> {copy.need}</p>
+          <p className="text-sm text-gray-500">{copy.tip}</p>
           <p className="text-sm text-gray-600">
             While the probe is out, Argonaut stops logging {sensor === 'ph' ? 'pH and pauses pH dosing' : 'EC'} so the
             buffer reading never counts as your reservoir. It resumes on its own after 15 minutes if you forget to tell it.
@@ -110,7 +125,15 @@ export function SensorCheckWizard({ sensor, onClose }: { sensor: Sensor; onClose
 
       {step === 'dip' && (
         <>
-          <p className="text-sm text-gray-700">{copy.dip}</p>
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Reading in">
+            {REFS[sensor].map(r => (
+              <button key={r.key} type="button" role="radio" aria-checked={r.key === refKey} onClick={() => setRefKey(r.key)}
+                className={`rounded-full border px-2.5 py-1 text-xs ${r.key === refKey ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-200 bg-white text-gray-600'}`}>
+                {r.label}{done.includes(r.key) ? ' ✓' : ''}
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-gray-700">{ref.dip}</p>
           <button onClick={read} className="self-start rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white">
             Read the probe
           </button>
@@ -119,7 +142,7 @@ export function SensorCheckWizard({ sensor, onClose }: { sensor: Sensor; onClose
 
       {step === 'reading' && (
         <p className="text-sm text-gray-700">
-          Reading the probe in the {copy.refLabel}… keep it still. This takes 1–2 minutes (Argonaut checks in once a
+          Reading the probe in the {ref.label}… keep it still. This takes 1–2 minutes (Argonaut checks in once a
           minute, then takes several readings to make sure it has settled).
         </p>
       )}
@@ -128,7 +151,7 @@ export function SensorCheckWizard({ sensor, onClose }: { sensor: Sensor; onClose
         <>
           <div className="rounded-lg bg-white border border-gray-200 px-3 py-2.5">
             <p className="text-sm text-gray-700">
-              Reads <span className="font-semibold">{result.reading}</span> in the {copy.refLabel} —{' '}
+              Reads <span className="font-semibold">{result.reading}</span> in the {ref.label} —{' '}
               <span className="font-semibold">{fmtErr(result, sensor)}</span> off.
             </p>
             {!result.stable && <p className="mt-1 text-sm text-amber-700">The reading was still moving. Leave it a little longer and read again.</p>}
@@ -160,6 +183,15 @@ export function SensorCheckWizard({ sensor, onClose }: { sensor: Sensor; onClose
             {!result.stable && (
               <button onClick={read} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white">Read again</button>
             )}
+            <button onClick={() => {
+                const next = REFS[sensor].find(r => !done.includes(r.key))
+                if (next) setRefKey(next.key)
+                setResult(null)
+                setStep('dip')
+              }} disabled={busy}
+              className="rounded-lg border border-emerald-600 bg-white px-3 py-2 text-sm font-medium text-emerald-700 disabled:opacity-40">
+              Check another standard
+            </button>
             <button onClick={() => setStep('putback')} disabled={busy} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 disabled:opacity-40">
               {result.stable && result.can_apply ? 'Don’t apply' : 'Continue'}
             </button>
