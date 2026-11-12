@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { uploadPhotoOriginal, insertPhotoUploadRow } from '../lib/photoUploads'
+import { useDeviceConfig } from '../hooks/useDeviceConfig'
 
 const MAX_SIZE_BYTES = 20 * 1024 * 1024
 
@@ -26,7 +27,10 @@ function validateFile(file: File): string | null {
 }
 
 export function PhotoCaptureForm({ onUploaded }: { onUploaded: (uploadId: string) => void }) {
-  const { selectedDevice, selectedTrial, session } = useAuth()
+  const { selectedDevice, session } = useAuth()
+  // File the photo under the unit's current grow, not the sidebar's trial filter.
+  const { config } = useDeviceConfig()
+  const currentTrial = typeof config?.ACTIVE_TRIAL === 'string' ? config.ACTIVE_TRIAL : null
   const [file, setFile] = useState<File | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [phase, setPhase] = useState<SubmitPhase>({ kind: 'idle' })
@@ -66,7 +70,7 @@ export function PhotoCaptureForm({ onUploaded }: { onUploaded: (uploadId: string
         originalName: phase.file.name,
         sizeBytes: phase.file.size,
         uploadedBy: session.user.id,
-        trialName: selectedTrial,
+        trialName: currentTrial,
       })
       if (error || !data) {
         setPhase({ kind: 'insertError', message: error?.message ?? 'Could not save this photo.', storagePath: phase.storagePath, file: phase.file })
@@ -91,7 +95,7 @@ export function PhotoCaptureForm({ onUploaded }: { onUploaded: (uploadId: string
       originalName: file.name,
       sizeBytes: file.size,
       uploadedBy: session.user.id,
-      trialName: selectedTrial,
+      trialName: currentTrial,
     })
     if (insertError || !data) {
       setPhase({ kind: 'insertError', message: insertError?.message ?? 'Could not save this photo.', storagePath, file })
