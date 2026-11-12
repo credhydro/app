@@ -13,6 +13,7 @@ export interface TrialReview {
   try_next_time: { suggestion: string; why: string; expected_effect?: string; confidence: 'low' | 'medium' | 'high'
                    basis: 'this_grow' | 'past_grows' | 'general_horticulture' }[]
   caveats?: string[]
+  reminders?: { text: string; every_days: number }[]
 }
 
 /** The numbers shown as tiles -- a small slice of what the review was written from. */

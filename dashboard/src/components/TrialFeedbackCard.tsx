@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { sendSettingsCommand, useDeviceConfig, type CommandOutcome } from '../hooks/useDeviceConfig'
 import { formatTemp, tempUnit, type TempUnit } from '../lib/units'
 import { useTrialFeedback, type FeedbackTopic, type TrialReview, type ReviewFacts } from '../hooks/useTrialFeedback'
+import { everyLabel, useReminders } from '../hooks/useReminders'
 
 const TOPIC: Record<FeedbackTopic, string> = {
   yield: 'Yield',
@@ -102,6 +103,8 @@ export function TrialFeedbackCard({ trialName, waitSince = null }: { trialName: 
             </div>
           )}
 
+          {review.reminders && review.reminders.length > 0 && <ReminderOffers trialName={trialName} offers={review.reminders} />}
+
           {review.caveats && review.caveats.length > 0 && (
             <ul className="text-xs text-gray-400 list-disc pl-4 flex flex-col gap-0.5">
               {review.caveats.map((c, i) => <li key={i}>{c}</li>)}
@@ -127,6 +130,33 @@ export function TrialFeedbackCard({ trialName, waitSince = null }: { trialName: 
   )
 }
 
+function ReminderOffers({ trialName, offers }: { trialName: string; offers: { text: string; every_days: number }[] }) {
+  const { reminders, add } = useReminders()
+  const [state, setState] = useState<Record<string, CommandOutcome>>({})
+  const has = (t: string) => reminders.some(r => r.text.toLowerCase() === t.toLowerCase())
+  return (
+    <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4 flex flex-col gap-2">
+      <h3 className="text-sm font-semibold text-sky-900">Add to your daily brief?</h3>
+      {offers.map(o => {
+        const st = state[o.text]
+        const added = has(o.text) || st?.state === 'completed'
+        return (
+          <div key={o.text} className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm text-gray-700">{o.text} <span className="text-gray-400">· {everyLabel(o.every_days)}</span></span>
+            {added
+              ? <span className="text-xs font-medium text-sky-700">In your brief ✓</span>
+              : <button disabled={st?.state === 'waiting'} onClick={() => add(o.text, o.every_days, trialName, r => setState(p => ({ ...p, [o.text]: r })))}
+                  className="rounded-lg bg-sky-600 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-40">
+                  {st?.state === 'waiting' ? 'Adding…' : 'Add reminder'}
+                </button>}
+            {st?.state === 'failed' && <span className="w-full text-xs text-red-600">{st.message}</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function KeyNumbers({ facts, unit }: { facts: ReviewFacts | null; unit: TempUnit }) {
   if (!facts) return null
   const cost = facts.energy?.electricity_cost_per_marketable_gram_usd
@@ -134,8 +164,12 @@ function KeyNumbers({ facts, unit }: { facts: ReviewFacts | null; unit: TempUnit
   const day = facts.climate?.day_vs_night?.lights_on?.airtemp_C?.mean
   const night = facts.climate?.day_vs_night?.lights_off?.airtemp_C?.mean
   const tiles = [
-    { label: 'Marketable / plant', value: fmt(facts.yield?.marketable_g_per_plant, 1, ' g') },
-    { label: 'Electricity / marketable g', value: cost != null ? `$${cost.toFixed(3)}` : '—' },
+    unit === 'F'
+      ? { label: 'Marketable / plant', value: fmt(g(facts.yield?.marketable_g_per_plant), 1, ' oz') }
+      : { label: 'Marketable / plant', value: fmt(facts.yield?.marketable_g_per_plant, 1, ' g') },
+    unit === 'F'
+      ? { label: 'Electricity / marketable oz', value: cost != null ? `$${(cost * G_PER_OZ).toFixed(2)}` : '—' }
+      : { label: 'Electricity / marketable g', value: cost != null ? `$${cost.toFixed(3)}` : '—' },
     { label: ph?.band ? `pH ${ph.band[0]}–${ph.band[1]}` : 'pH in range', value: fmt(ph?.pct_time_in_band, 0, '% of the time') },
     { label: 'Day / night temp', value: day != null && night != null ? `${formatTemp(day, unit)} / ${formatTemp(night, unit)}` : '—' },
   ]
@@ -149,6 +183,11 @@ function KeyNumbers({ facts, unit }: { facts: ReviewFacts | null; unit: TempUnit
       ))}
     </div>
   )
+}
+
+const G_PER_OZ = 28.3495
+function g(v: number | null | undefined): number | null {
+  return v == null ? null : v / G_PER_OZ
 }
 
 function fmt(v: number | null | undefined, digits: number, unit: string): string {

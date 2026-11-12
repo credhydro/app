@@ -8,6 +8,8 @@ export interface Brief {
   worth_a_look_tab?: 'lights' | 'ph' | 'pump' | 'fans' | 'photos' | 'sensors' | 'settings' | null
   growth?: string | null
   based_on?: string[]
+  /** Grower reminders due this morning (added as written, not by the model). */
+  reminders?: string[]
 }
 
 /** Same keys as the unit's cause list. */

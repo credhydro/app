@@ -15,6 +15,7 @@ import { AlertsPage } from './pages/AlertsPage'
 import { HarvestPage } from './pages/HarvestPage'
 import { StartGrowPage } from './pages/StartGrowPage'
 import { GrowReviewPage } from './pages/GrowReviewPage'
+import { RemindersPage } from './pages/RemindersPage'
 
 function DashboardLayout() {
   return (
@@ -70,6 +71,7 @@ export default function App() {
             <Route path="harvest" element={<HarvestPage />} />
             <Route path="start-grow" element={<StartGrowPage />} />
             <Route path="grow-review" element={<GrowReviewPage />} />
+            <Route path="reminders" element={<RemindersPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

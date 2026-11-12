@@ -17,8 +17,10 @@ type Mode = 'on' | 'off' | 'auto'
 
 export function LightsPage() {
   const { selectedDevice, selectedTrial } = useAuth()
-  const { isOn, lastReading, pendingCommand, schedule, loading, error } = useLightsStatus()
+  const { isOn, lastReading, pendingCommand, schedule: legacySchedule, loading, error } = useLightsStatus()
   const { config, refresh } = useDeviceConfig()
+  // The schedule the unit is actually running: LIGHTS_ON_PERIOD from its config snapshot.
+  const schedule = config?.LIGHTS_ON_PERIOD ?? legacySchedule
   const lightSource = useLightSource()
   // Older units have no LIGHTS_INSTALLED key: treat as installed, like the Pi does.
   const lightsInstalled = config ? config.LIGHTS_INSTALLED !== false : true
@@ -26,9 +28,10 @@ export function LightsPage() {
   const [sending, setSending] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
+  const scheduleKey = JSON.stringify(schedule)
   useEffect(() => {
-    setDraftSchedule(schedule)
-  }, [schedule])
+    setDraftSchedule(JSON.parse(scheduleKey) as number[])
+  }, [scheduleKey])
 
   async function handleMode(mode: Mode) {
     if (!selectedDevice || sending) return
@@ -51,6 +54,8 @@ export function LightsPage() {
     if (!error) {
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
+      // The unit re-reports its config after applying the schedule (~1 min).
+      setTimeout(refresh, 75 * 1000)
     }
   }
 
@@ -143,6 +148,12 @@ export function LightsPage() {
             {draftSchedule.length} hr{draftSchedule.length !== 1 ? 's' : ''} on
           </span>
         </div>
+        <p className="text-sm text-gray-600">
+          {schedule.length
+            ? <>Now running: <span className="font-medium text-gray-700">{describeSchedule(schedule)}</span> ({schedule.length} h of light a day).</>
+            : 'The current schedule hasn\u2019t been reported by the unit yet.'}
+          {scheduleChanged && <span className="text-amber-700"> Unsaved changes below.</span>}
+        </p>
 
         {/* AM row */}
         <div>
@@ -205,6 +216,21 @@ export function LightsPage() {
       )}
     </div>
   )
+}
+
+/** [6..21] -> "6AM – 10PM"; wraps past midnight; several blocks joined with commas. */
+function describeSchedule(hours: number[]): string {
+  const on = new Set(hours)
+  if (on.size === 24) return 'all day'
+  const blocks: string[] = []
+  for (let h = 0; h < 24; h++) {
+    if (on.has(h) && !on.has((h + 23) % 24)) {
+      let end = h
+      while (on.has((end + 1) % 24) && (end + 1) % 24 !== h) end = (end + 1) % 24
+      blocks.push(`${formatHour(h)} – ${formatHour((end + 1) % 24)}`)
+    }
+  }
+  return blocks.join(', ')
 }
 
 function ClockIcon() {
