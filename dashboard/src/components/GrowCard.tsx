@@ -24,6 +24,10 @@ export function GrowCard() {
               Last harvest: {lastHarvest.trial_name} on {fmtDate(lastHarvest.harvest_date)}
               {lastHarvest.marketable_mass_g != null && ` · ${Math.round(lastHarvest.marketable_mass_g)} g marketable`}
               {lastSummary?.days_grown != null && ` · ${lastSummary.days_grown} days`}
+              {' · '}
+              <Link to={`/grow-review?trial=${encodeURIComponent(lastHarvest.trial_name)}`} className="font-medium text-emerald-700 hover:underline">
+                Argonaut's review →
+              </Link>
             </p>
           )}
         </div>
@@ -37,6 +41,14 @@ export function GrowCard() {
             {day !== null && day >= 0 ? `Day ${day} since transplant (${fmtDate(day0)})` : 'Transplant date not recorded'}
             {trial?.plant_count ? ` · ${trial.plant_count} plants` : ''}
           </p>
+          {lastHarvest && (
+            <p className="text-xs text-gray-400">
+              Last grow: {lastHarvest.trial_name}{' · '}
+              <Link to={`/grow-review?trial=${encodeURIComponent(lastHarvest.trial_name)}`} className="font-medium text-emerald-700 hover:underline">
+                Argonaut's review →
+              </Link>
+            </p>
+          )}
         </div>
       )}
       <div className="flex flex-wrap gap-2">

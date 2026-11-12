@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { sendSettingsCommand, type CommandOutcome } from '../hooks/useDeviceConfig'
 import { MAINTENANCE, day0Of, useGrow } from '../hooks/useGrow'
 import { fmtDate } from '../components/GrowCard'
+import { TrialFeedbackCard } from '../components/TrialFeedbackCard'
 
 // Same keys as the unit's harvest_readiness.HARVEST_REASONS.
 const REASONS: { key: string; label: string }[] = [
@@ -54,6 +55,7 @@ export function HarvestPage() {
   const [step, setStep] = useState(0)
   const [d, setD] = useState<Draft | null>(null)
   const [outcome, setOutcome] = useState<CommandOutcome | null>(null)
+  const [doneAt] = useState(() => Date.now())   // reviews older than this page visit are from a previous registration
 
   // Start from a saved draft (e.g. after popping over to Growth Photos), else from the trial + last photo.
   useEffect(() => {
@@ -87,7 +89,15 @@ export function HarvestPage() {
 
   if (!profile?.is_admin) return <Shell><p className="text-sm text-gray-500">Harvest registration is admin-only for now.</p></Shell>
   // The result screen wins: after submitting, the unit is in maintenance and the draft is gone.
-  if (outcome?.state === 'completed') return <Shell><Result result={outcome.result} /></Shell>
+  if (outcome?.state === 'completed') {
+    const name = (outcome.result as { trial_name?: string } | null)?.trial_name
+    return (
+      <Shell>
+        <Result result={outcome.result} />
+        {name && <TrialFeedbackCard trialName={name} waitSince={doneAt} />}
+      </Shell>
+    )
+  }
   if (!configLoaded) return <Shell><p className="text-sm text-gray-400">Loading…</p></Shell>
   if (!active || active === MAINTENANCE) {
     return <Shell><p className="text-sm text-gray-600">There's no active grow to harvest — the unit is in maintenance. <Link to="/start-grow" className="text-emerald-700 hover:underline">Start a new grow →</Link></p></Shell>
@@ -366,7 +376,7 @@ function Result({ result }: { result: Record<string, unknown> | null }) {
           <p className="mt-1 text-xs text-gray-400">g per cm² = total weight ÷ canopy area in the last photo — the first data for estimating weight from photos.</p>
         </div>
       )}
-      <p className="text-sm text-gray-600">{r.ended_grow ? 'The unit is now in maintenance. ' : ''}Cost per gram comes later, once the trial is compiled.</p>
+      <p className="text-sm text-gray-600">{r.ended_grow ? 'The unit is now in maintenance. ' : ''}Argonaut is now compiling the grow and writing its review below — cost per gram included.</p>
       <div className="flex flex-wrap gap-2">
         <Link to="/start-grow" className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white">Start the next grow →</Link>
         <Link to="/" className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600">Home</Link>
