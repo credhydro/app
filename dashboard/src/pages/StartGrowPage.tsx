@@ -74,7 +74,7 @@ export function StartGrowPage() {
       sow_date: f.sow_date || null, transplant_date: f.transplant_date, germination: f.germination || null,
       plant_count: Number(f.plant_count), harvest_type: f.harvest_type, grow_medium: f.grow_medium.trim() || null,
       harvest_target: f.harvest_target.trim() || null, notes: f.notes.trim() || null, replace_active: f.replace_active,
-    }, f.trial_name, o => { setOutcome(o); if (o.state === 'completed') refresh() })
+    }, null, o => { setOutcome(o); if (o.state === 'completed') refresh() })  // null: commands.trial_name must already exist in trials, and this grow does not yet
   }
 
   return (
