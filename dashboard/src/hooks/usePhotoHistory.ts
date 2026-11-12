@@ -12,7 +12,8 @@ export interface PhotoHistoryState {
 
 const HISTORY_LIMIT = 20
 
-export function usePhotoHistory(refreshToken: number): PhotoHistoryState {
+/** Recent uploads for one grow (trial); null = every upload for the unit. */
+export function usePhotoHistory(refreshToken: number, trialName: string | null | undefined = null): PhotoHistoryState {
   const { selectedDevice } = useAuth()
   const [state, setState] = useState<PhotoHistoryState>({
     rows: [],
@@ -21,12 +22,14 @@ export function usePhotoHistory(refreshToken: number): PhotoHistoryState {
   })
 
   async function fetch() {
-    if (!selectedDevice) return
+    if (!selectedDevice || trialName === undefined) return      // undefined = still deciding which grow
     try {
-      const { data, error } = await supabase
+      let q = supabase
         .from('photo_uploads')
         .select(PHOTO_UPLOAD_COLUMNS)
         .eq('device_id', selectedDevice)
+      if (trialName) q = q.eq('trial_name', trialName)
+      const { data, error } = await q
         .order('created_at', { ascending: false })
         .limit(HISTORY_LIMIT)
 
@@ -42,7 +45,7 @@ export function usePhotoHistory(refreshToken: number): PhotoHistoryState {
   useEffect(() => {
     setState(prev => ({ ...prev, loading: true }))
     fetch()
-  }, [selectedDevice, refreshToken])
+  }, [selectedDevice, refreshToken, trialName])
 
   return state
 }

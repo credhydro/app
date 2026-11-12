@@ -26,15 +26,16 @@ const SAME_SESSION_HOURS = 12
 const MIN_DAYS_FOR_RATE = 0.5
 const MAX_ANCHOR_GAP_DAYS = 30
 
-export function useGrowthSeries() {
-  const { selectedDevice, selectedTrial } = useAuth()
+/** Growth series for one grow (trial). null = every photo for the unit. */
+export function useGrowthSeries(trialName: string | null | undefined) {
+  const { selectedDevice } = useAuth()
   const [points, setPoints] = useState<GrowthPoint[]>([])
   const [transplant, setTransplant] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!selectedDevice) return
+    if (!selectedDevice || trialName === undefined) return      // undefined = still deciding which grow
     let cancelled = false
     async function load() {
       let q = supabase
@@ -45,7 +46,7 @@ export function useGrowthSeries() {
         .eq('qc_status', 'ok')
         .order('created_at', { ascending: true })
         .limit(200)
-      if (selectedTrial) q = q.eq('trial_name', selectedTrial)
+      if (trialName) q = q.eq('trial_name', trialName)
       const res = await q
       if (cancelled) return
       if (res.error) {
@@ -58,16 +59,17 @@ export function useGrowthSeries() {
       setPoints(toSessions(rows.map(r => r.result as PhotoResult | null)))
 
       // Transplant day = the trial's planting_date: growth is taken to start at 0 there.
-      const trial = selectedTrial ?? (rows.length ? rows[rows.length - 1].trial_name : null)
+      const trial = trialName ?? (rows.length ? rows[rows.length - 1].trial_name : null)
       let planted: number | null = null
       if (trial) {
         const t = await supabase
           .from('trials')
-          .select('planting_date')
+          .select('*')
           .eq('trial_name', trial)
           .eq('device_id', selectedDevice)
           .maybeSingle()
-        const d = t.data?.planting_date as string | undefined
+        // Day 0 = transplant date when recorded (v11), else the planting date.
+        const d = (t.data?.transplant_date ?? t.data?.planting_date) as string | undefined
         if (d) planted = new Date(`${d.slice(0, 10)}T00:00:00`).getTime()
       }
       if (cancelled) return
@@ -80,7 +82,7 @@ export function useGrowthSeries() {
       cancelled = true
       clearInterval(id)
     }
-  }, [selectedDevice, selectedTrial])
+  }, [selectedDevice, trialName])
 
   // Draw the zero point only when it is plausible: before the first photo and not
   // more than MAX_ANCHOR_GAP_DAYS earlier (e.g. a trial name reused for a new crop

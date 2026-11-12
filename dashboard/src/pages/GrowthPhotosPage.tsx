@@ -8,6 +8,8 @@ import { PhotoStatusView } from '../components/PhotoStatusView'
 import { PhotoHistoryList } from '../components/PhotoHistoryList'
 import { PhotoDeviceEmptyState } from '../components/PhotoDeviceEmptyState'
 import type { PhotoUploadStatus } from '../types'
+import { useGrowTrial } from '../hooks/useGrowTrial'
+import { GrowPicker } from '../components/GrowPicker'
 
 export function GrowthPhotosPage() {
   const { selectedDevice, session } = useAuth()
@@ -15,7 +17,9 @@ export function GrowthPhotosPage() {
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0)
 
   const { row, loading: rowLoading, error: rowError } = usePhotoUploadRow(activeUploadId)
-  const { rows: history, loading: historyLoading, error: historyError } = usePhotoHistory(historyRefreshToken)
+  const grow = useGrowTrial()
+  const { rows: history, loading: historyLoading, error: historyError } =
+    usePhotoHistory(historyRefreshToken, grow.loaded ? grow.trial : undefined)
 
   const lastStatusRef = useRef<PhotoUploadStatus | null>(null)
   useEffect(() => {
@@ -67,6 +71,12 @@ export function GrowthPhotosPage() {
         />
       )}
 
+      <div className="flex flex-wrap items-center justify-between gap-2 -mb-3">
+        <span className="text-xs text-gray-500">
+          {grow.isCurrent ? 'Photos from the current grow' : grow.trial ? `Photos from ${grow.trial}` : 'All photos'}
+        </span>
+        <GrowPicker trial={grow.trial} current={grow.current} options={grow.options} onChange={grow.setTrial} />
+      </div>
       <PhotoHistoryList
         rows={history}
         loading={historyLoading}

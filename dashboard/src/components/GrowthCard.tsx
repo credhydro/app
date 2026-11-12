@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useGrowthSeries, type GrowthInterval, type GrowthPoint } from '../hooks/useGrowthSeries'
+import { useGrowTrial } from '../hooks/useGrowTrial'
+import { GrowPicker } from './GrowPicker'
 
 // Hand-drawn SVG like the other dashboard charts. One series (average plant),
 // a band from the smallest to the largest plant, a marker per photo session.
@@ -26,7 +28,8 @@ function niceMax(v: number): number {
 }
 
 export function GrowthCard() {
-  const { points, intervals, transplant, transplantIssue, loading, error } = useGrowthSeries()
+  const grow = useGrowTrial()
+  const { points, intervals, transplant, transplantIssue, loading, error } = useGrowthSeries(grow.loaded ? grow.trial : undefined)
   const photos = points.filter(p => !p.anchor)
   const daysSince = photos.length ? (Date.now() - photos[photos.length - 1].t) / 86400000 : null
   const photoDue = daysSince === null || daysSince >= PHOTO_DUE_DAYS
@@ -35,8 +38,11 @@ export function GrowthCard() {
   return (
     <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Plant growth</h2>
-        {!loading && <PhotoStatus daysSince={daysSince} due={photoDue} nextBy={nextBy} />}
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Plant growth</h2>
+          <GrowPicker trial={grow.trial} current={grow.current} options={grow.options} onChange={grow.setTrial} />
+        </div>
+        {!loading && (grow.isCurrent || !grow.current) && <PhotoStatus daysSince={daysSince} due={photoDue} nextBy={nextBy} />}
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
